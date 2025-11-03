@@ -1,0 +1,26 @@
+# CODEOWNERS file for Studybyself
+# These owners will be automatically requested for review when someone opens a pull request
+
+# Default owners for everything in the repo
+*                                   @studybyself/core-team
+
+# Frontend code
+/src/**                             @studybyself/frontend-team
+
+# Backend and database
+/supabase/**                        @studybyself/backend-team
+/supabase/migrations/**             @studybyself/backend-team @studybyself/dba
+
+# Infrastructure and CI/CD
+/.github/**                         @studybyself/devops-team
+/vite.config.ts                     @studybyself/devops-team
+
+# Documentation
+/README.md                          @studybyself/docs-team
+/CONTRIBUTING.md                    @studybyself/docs-team
+/docs/**                            @studybyself/docs-team
+
+# Configuration files
+/.env.example                       @studybyself/devops-team
+/package.json                       @studybyself/devops-team
+/tsconfig.json                      @studybyself/devops-team

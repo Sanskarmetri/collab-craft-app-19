@@ -1,4 +1,30 @@
-# Welcome to your Lovable project
+# Studybyself - UPSC & PSC Preparation App
+
+[![CI Pipeline](https://github.com/studybyself/app/workflows/CI%20Pipeline/badge.svg)](https://github.com/studybyself/app/actions)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+AI-powered Progressive Web App for comprehensive UPSC and State PSC preparation with intelligent mentorship, disciplined study management, and behavioral reinforcement.
+
+## Features
+
+- 🤖 AI-powered subject tutors (History, Geography, Polity, Economics, Science & Tech, Ethics, Current Affairs)
+- 📚 Smart study planning and timetable generation
+- ⏱️ Focus mode with distraction blocking
+- 📊 Performance analytics and progress tracking
+- 📝 Topic-wise quizzes and full-length mock tests
+- 🌐 PWA support for mobile-like experience
+- 🌙 Dark theme optimized for extended study sessions
+- 🔒 Secure authentication and data privacy
+
+## Tech Stack
+
+- **Frontend**: React 18, TypeScript, Vite
+- **Styling**: Tailwind CSS with Inter font
+- **Backend**: Supabase (Auth, PostgreSQL, Real-time, Storage)
+- **AI**: OpenAI GPT-4o
+- **PWA**: Vite PWA Plugin with Workbox
+
+## Welcome to your Lovable project
 
 ## Project info
 

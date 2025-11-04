@@ -8,6 +8,13 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import Chat from "./pages/Chat";
+import Focus from "./pages/Focus";
+import Timetable from "./pages/Timetable";
+import Quiz from "./pages/Quiz";
+import Analytics from "./pages/Analytics";
+import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +34,62 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/chat"
+              element={
+                <ProtectedRoute>
+                  <Chat />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/focus"
+              element={
+                <ProtectedRoute>
+                  <Focus />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/timetable"
+              element={
+                <ProtectedRoute>
+                  <Timetable />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/quiz"
+              element={
+                <ProtectedRoute>
+                  <Quiz />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics"
+              element={
+                <ProtectedRoute>
+                  <Analytics />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
                 </ProtectedRoute>
               }
             />

@@ -1,35 +1,22 @@
 import { useAuth } from '@/hooks/useAuth';
+import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookOpen, Clock, Target, TrendingUp } from 'lucide-react';
+import { Clock, Target, BookOpen, TrendingUp, Play, Brain, Calendar } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center space-x-2">
-            <BookOpen className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold">Studybyself</h1>
-          </div>
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-muted-foreground">
-              Welcome, {user?.user_metadata?.name || 'Student'}!
-            </span>
-            <Button variant="outline" size="sm" onClick={signOut}>
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto p-4 md:p-6">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+    <AppLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Welcome back, {user?.user_metadata?.name || 'Student'}!
+          </h1>
           <p className="text-muted-foreground">
-            Track your progress and continue your preparation journey
+            Here's your study progress for today
           </p>
         </div>
 
@@ -106,19 +93,34 @@ export default function Dashboard() {
               <CardDescription>Get started with your preparation</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button className="w-full" variant="outline">
-                Start Focus Session
+              <Button className="w-full" asChild>
+                <Link to="/focus">
+                  <Play className="mr-2 h-4 w-4" />
+                  Start Focus Session
+                </Link>
               </Button>
-              <Button className="w-full" variant="outline">
-                Take a Quiz
+              <Button className="w-full" variant="outline" asChild>
+                <Link to="/quiz">
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Take a Quiz
+                </Link>
               </Button>
-              <Button className="w-full" variant="outline">
-                Chat with AI Tutor
+              <Button className="w-full" variant="outline" asChild>
+                <Link to="/chat">
+                  <Brain className="mr-2 h-4 w-4" />
+                  Chat with AI Tutor
+                </Link>
+              </Button>
+              <Button className="w-full" variant="outline" asChild>
+                <Link to="/timetable">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  View Timetable
+                </Link>
               </Button>
             </CardContent>
           </Card>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppLayout>
   );
 }

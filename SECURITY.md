@@ -4,10 +4,12 @@
 
 All sensitive credentials are managed through environment variables. Never commit actual values to version control.
 
+**⚠️ CRITICAL:** The `.env` file must never be committed to version control. It is already added to `.gitignore`.
+
 ### Required Environment Variables
 
 ```bash
-# .env (DO NOT COMMIT THIS FILE)
+# .env (DO NOT COMMIT THIS FILE - IT'S IN .GITIGNORE)
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=your_publishable_anon_key_here
 VITE_SUPABASE_PROJECT_ID=your_project_id_here

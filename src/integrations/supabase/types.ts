@@ -202,6 +202,7 @@ export type Database = {
           created_at: string
           date: string
           id: string
+          metadata: Json | null
           planned_duration: number
           status: Database["public"]["Enums"]["session_status"] | null
           subject: Database["public"]["Enums"]["subject_type"]
@@ -213,6 +214,7 @@ export type Database = {
           created_at?: string
           date: string
           id?: string
+          metadata?: Json | null
           planned_duration: number
           status?: Database["public"]["Enums"]["session_status"] | null
           subject: Database["public"]["Enums"]["subject_type"]
@@ -224,6 +226,7 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          metadata?: Json | null
           planned_duration?: number
           status?: Database["public"]["Enums"]["session_status"] | null
           subject?: Database["public"]["Enums"]["subject_type"]

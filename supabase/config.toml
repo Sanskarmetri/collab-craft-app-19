@@ -3,3 +3,11 @@ project_id = "mpsdskpkxszrfsgpheoe"
 [[edge_runtime.functions]]
 name = "ai-chat"
 verify_jwt = true
+
+[[edge_runtime.functions]]
+name = "generate-timetable"
+verify_jwt = true
+
+[[edge_runtime.functions]]
+name = "reschedule-session"
+verify_jwt = true

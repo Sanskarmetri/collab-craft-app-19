@@ -2,4 +2,4 @@ project_id = "mpsdskpkxszrfsgpheoe"
 
 [[edge_runtime.functions]]
 name = "ai-chat"
-verify_jwt = false
+verify_jwt = true

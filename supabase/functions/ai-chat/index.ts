@@ -1,5 +1,91 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+// Input validation schema
+interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
+interface ChatRequest {
+  messages: ChatMessage[];
+  subject: string;
+  language: string;
+}
+
+const VALID_SUBJECTS = [
+  "Current Affairs",
+  "History", 
+  "Geography",
+  "Polity",
+  "Economics",
+  "Science & Tech",
+  "Ethics"
+];
+
+const VALID_LANGUAGES = ["en", "hi"];
+
+const MAX_MESSAGE_LENGTH = 2000;
+const MAX_MESSAGES = 50;
+
+function validateChatRequest(data: any): { valid: boolean; error?: string; data?: ChatRequest } {
+  if (!data || typeof data !== 'object') {
+    return { valid: false, error: 'Invalid request body' };
+  }
+
+  const { messages, subject, language } = data;
+
+  // Validate messages array
+  if (!Array.isArray(messages)) {
+    return { valid: false, error: 'Messages must be an array' };
+  }
+
+  if (messages.length === 0) {
+    return { valid: false, error: 'At least one message is required' };
+  }
+
+  if (messages.length > MAX_MESSAGES) {
+    return { valid: false, error: `Maximum ${MAX_MESSAGES} messages allowed` };
+  }
+
+  // Validate each message
+  for (const msg of messages) {
+    if (!msg || typeof msg !== 'object') {
+      return { valid: false, error: 'Invalid message format' };
+    }
+
+    if (!['user', 'assistant', 'system'].includes(msg.role)) {
+      return { valid: false, error: 'Invalid message role' };
+    }
+
+    if (typeof msg.content !== 'string') {
+      return { valid: false, error: 'Message content must be a string' };
+    }
+
+    if (msg.content.length === 0) {
+      return { valid: false, error: 'Message content cannot be empty' };
+    }
+
+    if (msg.content.length > MAX_MESSAGE_LENGTH) {
+      return { valid: false, error: `Message content must be less than ${MAX_MESSAGE_LENGTH} characters` };
+    }
+  }
+
+  // Validate subject
+  if (typeof subject !== 'string' || !VALID_SUBJECTS.includes(subject)) {
+    return { valid: false, error: 'Invalid subject. Must be one of: ' + VALID_SUBJECTS.join(', ') };
+  }
+
+  // Validate language
+  if (typeof language !== 'string' || !VALID_LANGUAGES.includes(language)) {
+    return { valid: false, error: 'Invalid language. Must be either "en" or "hi"' };
+  }
+
+  return { 
+    valid: true, 
+    data: { messages, subject, language } as ChatRequest 
+  };
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -28,11 +114,27 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, subject, language } = await req.json();
+    const requestBody = await req.json();
+    
+    // Validate input
+    const validation = validateChatRequest(requestBody);
+    if (!validation.valid) {
+      console.error('Validation error:', validation.error);
+      return new Response(
+        JSON.stringify({ error: validation.error }), 
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const { messages, subject, language } = validation.data!;
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+      console.error('LOVABLE_API_KEY is not configured');
+      throw new Error("AI service is not configured");
     }
 
     // Get subject-specific system prompt
@@ -43,7 +145,7 @@ serve(async (req) => {
       ? " Respond in Hindi (Devanagari script) when the user asks in Hindi."
       : "";
 
-    console.log(`Chat request - Subject: ${subject}, Language: ${language}, Messages: ${messages.length}`);
+    console.log(`Chat request - Subject: ${subject}, Language: ${language}, Messages: ${messages.length}, User message length: ${messages[messages.length - 1]?.content?.length || 0}`);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

@@ -17,19 +17,34 @@ export async function streamChat({
   onDone,
   onError,
 }: StreamChatOptions) {
-  const CHAT_URL = `https://mpsdskpkxszrfsgpheoe.supabase.co/functions/v1/ai-chat`;
+  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+  const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  
+  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+    onError(new Error('Missing Supabase environment variables'));
+    return;
+  }
+
+  const CHAT_URL = `${SUPABASE_URL}/functions/v1/ai-chat`;
 
   try {
     const resp = await fetch(CHAT_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1wc2Rza3BreHN6cmZzZ3BoZW9lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNzk1ODAsImV4cCI6MjA3NzY1NTU4MH0.QBPdD7bNA-CwHmk-1T5VbK1FlxiIJmCOAHX2nBpdaYY`,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
       },
       body: JSON.stringify({ messages, subject, language }),
     });
 
     if (!resp.ok) {
+      if (resp.status === 401) {
+        throw new Error("Authentication required. Please sign in again.");
+      }
+      if (resp.status === 400) {
+        const errorData = await resp.json().catch(() => ({}));
+        throw new Error(errorData.error || "Invalid request. Please check your input.");
+      }
       if (resp.status === 429) {
         throw new Error("Rate limit exceeded. Please try again in a moment.");
       }
@@ -104,7 +119,6 @@ export async function streamChat({
 
     onDone();
   } catch (error) {
-    console.error("Stream chat error:", error);
     onError(error instanceof Error ? error : new Error("Unknown error"));
   }
 }

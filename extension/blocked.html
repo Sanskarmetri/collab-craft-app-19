@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Site Blocked - Focus Mode</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1e3a8a 0%, #334155 100%);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container {
+      text-align: center;
+      max-width: 600px;
+    }
+    .icon {
+      font-size: 5rem;
+      margin-bottom: 1.5rem;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      font-weight: 700;
+    }
+    p {
+      font-size: 1.25rem;
+      margin-bottom: 2rem;
+      opacity: 0.9;
+      line-height: 1.6;
+    }
+    .blocked-site {
+      padding: 1.5rem;
+      background: rgba(255,255,255,0.1);
+      border-radius: 12px;
+      margin-bottom: 2rem;
+      backdrop-filter: blur(10px);
+    }
+    .blocked-site strong {
+      display: block;
+      font-size: 0.875rem;
+      opacity: 0.7;
+      margin-bottom: 0.5rem;
+    }
+    .site-name {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+    .motivation {
+      font-size: 1rem;
+      opacity: 0.8;
+      font-style: italic;
+      margin-top: 2rem;
+    }
+    .timer {
+      font-size: 0.875rem;
+      opacity: 0.6;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">🔒</div>
+    <h1>Focus Mode Active</h1>
+    <p>This website is blocked during your study session. Stay focused on your goals!</p>
+    
+    <div class="blocked-site">
+      <strong>Blocked Site:</strong>
+      <div class="site-name" id="blockedSite"></div>
+    </div>
+
+    <p style="font-size: 1rem;">
+      Return to your <strong>StudyBySelf</strong> app to continue your focus session or take a break.
+    </p>
+
+    <div class="motivation">
+      "Success is the sum of small efforts repeated daily."
+    </div>
+
+    <div class="timer" id="timer"></div>
+  </div>
+
+  <script>
+    // Get blocked site from URL
+    const params = new URLSearchParams(window.location.search);
+    const site = params.get('site') || 'this website';
+    document.getElementById('blockedSite').textContent = site;
+
+    // Show time blocked
+    const startTime = Date.now();
+    function updateTimer() {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const minutes = Math.floor(elapsed / 60);
+      const seconds = elapsed % 60;
+      document.getElementById('timer').textContent = 
+        `Blocked for: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+    setInterval(updateTimer, 1000);
+    updateTimer();
+
+    // Prevent back navigation
+    history.pushState(null, '', location.href);
+    window.onpopstate = function () {
+      history.pushState(null, '', location.href);
+    };
+  </script>
+</body>
+</html>

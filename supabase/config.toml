@@ -11,3 +11,11 @@ verify_jwt = true
 [[edge_runtime.functions]]
 name = "reschedule-session"
 verify_jwt = true
+
+[[edge_runtime.functions]]
+name = "generate-quiz"
+verify_jwt = true
+
+[[edge_runtime.functions]]
+name = "submit-quiz"
+verify_jwt = true

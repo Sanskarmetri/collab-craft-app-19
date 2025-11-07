@@ -1,8 +1,9 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { BookOpen, Bell, Settings } from 'lucide-react';
+import { BookOpen, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 
 export default function Header() {
   const { user } = useAuth();
@@ -21,11 +22,7 @@ export default function Header() {
         </Link>
         
         <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/dashboard">
-              <Bell className="h-5 w-5" />
-            </Link>
-          </Button>
+          <NotificationCenter />
           <Button variant="ghost" size="icon" asChild>
             <Link to="/settings">
               <Settings className="h-5 w-5" />

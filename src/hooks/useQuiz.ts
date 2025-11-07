@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useAchievements } from './useAchievements';
 import { toast } from 'sonner';
 
 export interface QuizQuestion {
@@ -38,6 +39,7 @@ export interface QuizResult {
 
 export function useQuiz() {
   const { user } = useAuth();
+  const { checkAchievements } = useAchievements();
   const [currentAttempt, setCurrentAttempt] = useState<QuizAttempt | null>(null);
   const [loading, setLoading] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -168,6 +170,10 @@ export function useQuiz() {
       localStorage.removeItem(`quiz_${currentAttempt.id}_answers`);
 
       toast.success('Quiz submitted successfully!');
+      
+      // Check for achievements
+      checkAchievements('quiz_complete');
+      
       return data as QuizResult;
     } catch (error: any) {
       console.error('Error submitting quiz:', error);

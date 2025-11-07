@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAchievements } from './useAchievements';
 
 export type SessionStatus = 'idle' | 'active' | 'paused' | 'break' | 'completed';
 
@@ -14,6 +15,7 @@ interface FocusSessionData {
 }
 
 export function useFocusSession() {
+  const { checkAchievements } = useAchievements();
   const [status, setStatus] = useState<SessionStatus>('idle');
   const [timeLeft, setTimeLeft] = useState(0);
   const [totalDuration, setTotalDuration] = useState(0);
@@ -211,6 +213,9 @@ export function useFocusSession() {
           title: 'Session Completed!',
           description: `Great work! You focused for ${Math.floor(focusTime / 60)} minutes.`,
         });
+        
+        // Check for achievements
+        checkAchievements('session_complete');
       } catch (error) {
         console.error('Failed to complete session:', error);
       }

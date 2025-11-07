@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          category: string
+          code: string
+          created_at: string
+          criteria: Json
+          description: string
+          icon: string
+          id: string
+          name: string
+          xp_reward: number
+        }
+        Insert: {
+          category: string
+          code: string
+          created_at?: string
+          criteria: Json
+          description: string
+          icon: string
+          id?: string
+          name: string
+          xp_reward?: number
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string
+          criteria?: Json
+          description?: string
+          icon?: string
+          id?: string
+          name?: string
+          xp_reward?: number
+        }
+        Relationships: []
+      }
       analytics: {
         Row: {
           average_score: number | null
@@ -61,6 +97,39 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          metadata: Json | null
+          read: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          metadata?: Json | null
+          read?: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          metadata?: Json | null
+          read?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -68,6 +137,7 @@ export type Database = {
           exam_type: Database["public"]["Enums"]["exam_type"]
           id: string
           language: string
+          level: number | null
           name: string
           streak: number | null
           subscription_status:
@@ -75,6 +145,7 @@ export type Database = {
             | null
           timezone: string | null
           updated_at: string
+          xp: number | null
         }
         Insert: {
           created_at?: string
@@ -82,6 +153,7 @@ export type Database = {
           exam_type: Database["public"]["Enums"]["exam_type"]
           id: string
           language?: string
+          level?: number | null
           name: string
           streak?: number | null
           subscription_status?:
@@ -89,6 +161,7 @@ export type Database = {
             | null
           timezone?: string | null
           updated_at?: string
+          xp?: number | null
         }
         Update: {
           created_at?: string
@@ -96,6 +169,7 @@ export type Database = {
           exam_type?: Database["public"]["Enums"]["exam_type"]
           id?: string
           language?: string
+          level?: number | null
           name?: string
           streak?: number | null
           subscription_status?:
@@ -103,6 +177,7 @@ export type Database = {
             | null
           timezone?: string | null
           updated_at?: string
+          xp?: number | null
         }
         Relationships: []
       }
@@ -285,12 +360,45 @@ export type Database = {
           },
         ]
       }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          id: string
+          progress: Json | null
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          id?: string
+          progress?: Json | null
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          id?: string
+          progress?: Json | null
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_preferences: {
         Row: {
           created_at: string
           daily_hours: number
           focus_duration: number
           id: string
+          notifications: Json | null
           preferred_slots: Json | null
           updated_at: string
           user_id: string
@@ -300,6 +408,7 @@ export type Database = {
           daily_hours?: number
           focus_duration?: number
           id?: string
+          notifications?: Json | null
           preferred_slots?: Json | null
           updated_at?: string
           user_id: string
@@ -309,6 +418,7 @@ export type Database = {
           daily_hours?: number
           focus_duration?: number
           id?: string
+          notifications?: Json | null
           preferred_slots?: Json | null
           updated_at?: string
           user_id?: string

@@ -15,6 +15,11 @@ import Quiz from "./pages/Quiz";
 import Analytics from "./pages/Analytics";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
+import Subscription from "./pages/Subscription";
+import TermsOfService from "./pages/legal/TermsOfService";
+import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
+import CookiePolicy from "./pages/legal/CookiePolicy";
+import RefundPolicy from "./pages/legal/RefundPolicy";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -93,6 +98,18 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/subscription"
+              element={
+                <ProtectedRoute>
+                  <Subscription />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/legal/terms" element={<TermsOfService />} />
+            <Route path="/legal/privacy" element={<PrivacyPolicy />} />
+            <Route path="/legal/cookies" element={<CookiePolicy />} />
+            <Route path="/legal/refund" element={<RefundPolicy />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

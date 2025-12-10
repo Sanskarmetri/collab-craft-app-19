@@ -114,6 +114,59 @@ serve(async (req) => {
   }
 
   try {
+    // Get user from auth header for rate limiting
+    const authHeader = req.headers.get("Authorization");
+    let userId: string | null = null;
+    
+    if (authHeader) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      
+      const token = authHeader.replace("Bearer ", "");
+      const { data: { user } } = await supabase.auth.getUser(token);
+      userId = user?.id || null;
+      
+      if (userId) {
+        // Check subscription status for rate limit
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('subscription_status')
+          .eq('id', userId)
+          .single();
+        
+        const isPremium = profile?.subscription_status === 'premium';
+        const limit = isPremium ? 100 : 20;
+        
+        // Check rate limit
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        const { count } = await supabase
+          .from('api_usage')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('endpoint', 'ai-chat')
+          .gte('created_at', oneHourAgo);
+        
+        if ((count || 0) >= limit) {
+          return new Response(
+            JSON.stringify({ 
+              error: "Rate limit exceeded. " + (isPremium ? "Please try again later." : "Upgrade to Premium for higher limits."),
+              retryAfter: 3600
+            }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        // Record API usage
+        await supabase.from('api_usage').insert({
+          user_id: userId,
+          endpoint: 'ai-chat',
+          metadata: { timestamp: new Date().toISOString() }
+        });
+      }
+    }
+
     const requestBody = await req.json();
     
     // Validate input
@@ -145,7 +198,7 @@ serve(async (req) => {
       ? " Respond in Hindi (Devanagari script) when the user asks in Hindi."
       : "";
 
-    console.log(`Chat request - Subject: ${subject}, Language: ${language}, Messages: ${messages.length}, User message length: ${messages[messages.length - 1]?.content?.length || 0}`);
+    console.log(`Chat request - Subject: ${subject}, Language: ${language}, Messages: ${messages.length}, User: ${userId || 'anonymous'}`);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

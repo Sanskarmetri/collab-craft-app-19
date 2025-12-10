@@ -13,12 +13,34 @@ serve(async (req) => {
   }
 
   try {
-    const { quizType, subject, numberOfQuestions = 10, difficulty = 'medium' } = await req.json();
+    const requestBody = await req.json();
+    const { quizType, subject, numberOfQuestions = 10, difficulty = 'medium' } = requestBody;
 
-    // Validate input
-    if (!quizType || !subject) {
+    // Validate input with proper bounds
+    const validQuizTypes = ['daily', 'topic', 'full_mock', 'topic_wise', 'full_length'];
+    const validSubjects = ['history', 'geography', 'polity', 'economics', 'science_tech', 'ethics', 'current_affairs'];
+    const validDifficulties = ['easy', 'medium', 'hard'];
+
+    if (!quizType || !validQuizTypes.includes(quizType)) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: quizType, subject' }),
+        JSON.stringify({ error: `Invalid quizType. Must be one of: ${validQuizTypes.join(', ')}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!subject || !validSubjects.includes(subject)) {
+      return new Response(
+        JSON.stringify({ error: `Invalid subject. Must be one of: ${validSubjects.join(', ')}` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate numberOfQuestions range
+    const numQuestions = Math.min(Math.max(parseInt(String(numberOfQuestions)) || 10, 1), 100);
+    
+    if (!validDifficulties.includes(difficulty)) {
+      return new Response(
+        JSON.stringify({ error: `Invalid difficulty. Must be one of: ${validDifficulties.join(', ')}` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -58,22 +80,22 @@ serve(async (req) => {
         .select('*')
         .eq('subject', subject)
         .eq('question_type', 'mcq')
-        .limit(numberOfQuestions);
+        .limit(numQuestions);
       
       if (error) throw error;
-      questions = data;
-    } else if (quizType === 'topic') {
+      questions = data || [];
+    } else if (quizType === 'topic' || quizType === 'topic_wise') {
       // Topic quiz: focused on specific difficulty
       const { data, error } = await supabase
         .from('questions')
         .select('*')
         .eq('subject', subject)
         .eq('difficulty', difficulty)
-        .limit(numberOfQuestions);
+        .limit(numQuestions);
       
       if (error) throw error;
-      questions = data;
-    } else if (quizType === 'full_mock') {
+      questions = data || [];
+    } else if (quizType === 'full_mock' || quizType === 'full_length') {
       // Full mock: comprehensive selection across all subjects
       const { data, error } = await supabase
         .from('questions')
@@ -82,11 +104,11 @@ serve(async (req) => {
         .limit(100);
       
       if (error) throw error;
-      questions = data;
+      questions = data || [];
     }
 
     // If we don't have enough questions, generate more with AI
-    if (!questions || questions.length < numberOfQuestions) {
+    if (!questions || questions.length < numQuestions) {
       const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
       if (!LOVABLE_API_KEY) {
         return new Response(
@@ -96,7 +118,8 @@ serve(async (req) => {
       }
 
       // Generate questions using AI
-      const prompt = `Generate ${numberOfQuestions - (questions?.length || 0)} multiple choice questions for UPSC ${subject} exam at ${difficulty} difficulty level. 
+      const questionsNeeded = numQuestions - (questions?.length || 0);
+      const prompt = `Generate ${questionsNeeded} multiple choice questions for UPSC ${subject} exam at ${difficulty} difficulty level.
       
       Format each question as JSON with this structure:
       {
@@ -134,18 +157,22 @@ serve(async (req) => {
         const content = aiData.choices[0]?.message?.content;
         
         try {
+          // Clean up AI response (remove markdown code blocks if present)
+          let content = aiData.choices[0]?.message?.content || '';
+          content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+          
           const generatedQuestions = JSON.parse(content);
           
           // Insert generated questions into database
           const questionsToInsert = generatedQuestions.map((q: any) => ({
             subject,
-            topic: q.topic,
+            topic: q.topic || 'General',
             question_type: 'mcq',
             question_text: q.question_text,
             options: q.options,
             correct_answer: q.correct_answer,
             explanation: q.explanation,
-            difficulty: q.difficulty,
+            difficulty: q.difficulty || difficulty,
             metadata: { generated: true, generated_at: new Date().toISOString() }
           }));
 
@@ -159,18 +186,19 @@ serve(async (req) => {
           }
         } catch (e) {
           console.error('Failed to parse AI response:', e);
+          // Continue with existing questions
         }
       }
     }
 
     // Shuffle questions
-    const shuffledQuestions = questions?.sort(() => Math.random() - 0.5) || [];
+    const shuffledQuestions = (questions || []).sort(() => Math.random() - 0.5);
 
     // Calculate time limit (2 minutes per question)
-    const timeLimit = numberOfQuestions * 120;
+    const timeLimit = numQuestions * 120;
 
     // Create quiz attempt
-    const questionsForAttempt = shuffledQuestions.slice(0, numberOfQuestions).map((q: any) => ({
+    const questionsForAttempt = shuffledQuestions.slice(0, numQuestions).map((q: any) => ({
       id: q.id,
       question_text: q.question_text,
       question_type: q.question_type,
@@ -183,10 +211,10 @@ serve(async (req) => {
       .from('quiz_attempts')
       .insert({
         user_id: user.id,
-        quiz_type: quizType,
+        quiz_type: quizType === 'topic' ? 'topic_wise' : quizType === 'full_mock' ? 'full_length' : quizType,
         subject,
         questions: questionsForAttempt,
-        total_questions: numberOfQuestions,
+        total_questions: numQuestions,
         time_limit: timeLimit,
         status: 'in_progress'
       })
@@ -200,7 +228,7 @@ serve(async (req) => {
         attemptId: attempt.id,
         questions: questionsForAttempt,
         timeLimit,
-        totalQuestions: numberOfQuestions
+        totalQuestions: numQuestions
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

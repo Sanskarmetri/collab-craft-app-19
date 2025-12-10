@@ -47,3 +47,11 @@ verify_jwt = true
 [[edge_runtime.functions]]
 name = "delete-user-data"
 verify_jwt = true
+
+[[edge_runtime.functions]]
+name = "health"
+verify_jwt = false
+
+[[edge_runtime.functions]]
+name = "submit-feedback"
+verify_jwt = true

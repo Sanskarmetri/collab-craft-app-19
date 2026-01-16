@@ -107,7 +107,7 @@ Return ONLY a valid JSON array (no markdown, no explanations) with this exact st
 [
   {
     "date": "YYYY-MM-DD",
-    "subject": "History|Geography|Polity|Economics|Science & Tech|Ethics|Current Affairs",
+    "subject": "history|geography|polity|economics|science_tech|ethics|current_affairs",
     "topic": "Specific topic name",
     "planned_duration": 60,
     "start_time": "09:00",
@@ -121,7 +121,7 @@ Return ONLY a valid JSON array (no markdown, no explanations) with this exact st
 **Exam Details:**
 - Exam Date: ${requestData.examDate}
 - Days until exam: ${daysUntilExam}
-- Exam Type: ${profile?.exam_type || 'UPSC'}
+- Exam Type: ${profile?.exam_type || "UPSC"}
 
 **Study Capacity:**
 - Daily study hours: ${requestData.dailyHours}
@@ -130,7 +130,7 @@ Return ONLY a valid JSON array (no markdown, no explanations) with this exact st
 **Subjects to cover:**
 ${requestData.subjects.map((s, i) => `${i + 1}. ${s}`).join("\n")}
 
-**Start Date:** ${startDate.toISOString().split('T')[0]}
+**Start Date:** ${startDate.toISOString().split("T")[0]}
 
 Create an optimized schedule that maximizes learning efficiency while preventing burnout. Ensure all subjects receive adequate coverage with proper revision cycles.`;
 
@@ -141,27 +141,33 @@ Create an optimized schedule that maximizes learning efficiency while preventing
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-5-mini",
+        model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
         temperature: 0.7,
-        max_tokens: 4000,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
-      
+
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
-      
+
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "AI credits exhausted. Please add credits and try again." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
       throw new Error(`AI Gateway error: ${response.status}`);
     }
 
@@ -178,37 +184,60 @@ Create an optimized schedule that maximizes learning efficiency while preventing
         .replace(/```json\n?/g, "")
         .replace(/```\n?/g, "")
         .trim();
-      
+
       timetableItems = JSON.parse(cleanedContent);
-      
+
       if (!Array.isArray(timetableItems)) {
         throw new Error("AI response is not an array");
       }
     } catch (parseError: any) {
       console.error("Failed to parse AI response:", parseError);
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: "Failed to generate timetable. Please try again.",
-          details: parseError?.message || "Unknown parsing error"
+          details: parseError?.message || "Unknown parsing error",
         }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
+    const normalizeSubjectToEnum = (raw: unknown): string | null => {
+      if (typeof raw !== "string") return null;
+      const s = raw.trim().toLowerCase();
+
+      // Accept both enum-like outputs and friendly names
+      if (s === "history") return "history";
+      if (s === "geography") return "geography";
+      if (s === "polity") return "polity";
+      if (s === "economics") return "economics";
+      if (s === "ethics") return "ethics";
+      if (s === "science_tech" || s.includes("science")) return "science_tech";
+      if (s === "current_affairs" || s.includes("current")) return "current_affairs";
+
+      return null;
+    };
+
     // Validate and format items for database
-    const formattedItems = timetableItems.map((item: any) => ({
-      user_id: user.id,
-      date: item.date,
-      subject: item.subject,
-      topic: item.topic,
-      planned_duration: item.planned_duration || 60,
-      status: "planned" as const,
-      metadata: {
-        start_time: item.start_time,
-        priority: item.priority || "medium",
-        session_type: item.session_type || "new_topic",
+    const formattedItems = timetableItems.map((item: any) => {
+      const subjectEnum = normalizeSubjectToEnum(item.subject);
+      if (!subjectEnum) {
+        throw new Error(`Invalid subject from AI: ${String(item.subject)}`);
       }
-    }));
+
+      return {
+        user_id: user.id,
+        date: item.date,
+        subject: subjectEnum,
+        topic: item.topic,
+        planned_duration: item.planned_duration || 60,
+        status: "planned" as const,
+        metadata: {
+          start_time: item.start_time,
+          priority: item.priority || "medium",
+          session_type: item.session_type || "new_topic",
+        },
+      };
+    });
 
     // Insert into database
     const { data: insertedItems, error: insertError } = await supabase

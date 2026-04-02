@@ -27,7 +27,7 @@ export function useAnalyticsTracking() {
     };
     
     // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.log('[Analytics] Page View:', event);
     }
     
@@ -44,7 +44,7 @@ export function useAnalyticsTracking() {
       sessionId: getSessionId(),
     };
     
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.log('[Analytics] Event:', enrichedEvent);
     }
     

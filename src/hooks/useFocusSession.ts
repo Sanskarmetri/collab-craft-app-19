@@ -23,7 +23,7 @@ export function useFocusSession() {
   const [breakTime, setBreakTime] = useState(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [exitAttempts, setExitAttempts] = useState(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { toast } = useToast();
 
   const startTimer = useCallback(() => {

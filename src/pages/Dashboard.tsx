@@ -1,12 +1,39 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock, Target, BookOpen, TrendingUp, Play, Brain, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [stats, setStats] = useState({ streak: 0, focusMin: 0, quizzes: 0, avgScore: 0 });
+  const [todaySessions, setTodaySessions] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    const today = new Date().toISOString().split('T')[0];
+
+    const fetchStats = async () => {
+      const [profileRes, analyticsRes, sessionsRes] = await Promise.all([
+        supabase.from('profiles').select('streak').eq('id', user.id).single(),
+        supabase.from('analytics').select('total_focus_minutes, quizzes_taken, average_score').eq('date', today).eq('user_id', user.id).single(),
+        supabase.from('sessions').select('subject, topic, start_ts, end_ts, duration').eq('user_id', user.id).gte('start_ts', `${today}T00:00:00`).order('start_ts', { ascending: false }).limit(5),
+      ]);
+
+      setStats({
+        streak: profileRes.data?.streak || 0,
+        focusMin: analyticsRes.data?.total_focus_minutes || 0,
+        quizzes: analyticsRes.data?.quizzes_taken || 0,
+        avgScore: analyticsRes.data?.average_score || 0,
+      });
+      setTodaySessions(sessionsRes.data || []);
+    };
+
+    fetchStats();
+  }, [user]);
 
   return (
     <AppLayout>
@@ -27,9 +54,9 @@ export default function Dashboard() {
               <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0 days</div>
+              <div className="text-2xl font-bold">{stats.streak} days</div>
               <p className="text-xs text-muted-foreground">
-                Start your first session today!
+                {stats.streak > 0 ? 'Keep it going!' : 'Start your first session today!'}
               </p>
             </CardContent>
           </Card>
@@ -40,10 +67,8 @@ export default function Dashboard() {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0 min</div>
-              <p className="text-xs text-muted-foreground">
-                Today's focused study time
-              </p>
+              <div className="text-2xl font-bold">{stats.focusMin} min</div>
+              <p className="text-xs text-muted-foreground">Today's focused study time</p>
             </CardContent>
           </Card>
 
@@ -53,9 +78,9 @@ export default function Dashboard() {
               <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{stats.quizzes}</div>
               <p className="text-xs text-muted-foreground">
-                Take your first quiz
+                {stats.quizzes > 0 ? 'Great progress!' : 'Take your first quiz'}
               </p>
             </CardContent>
           </Card>
@@ -66,9 +91,9 @@ export default function Dashboard() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0%</div>
+              <div className="text-2xl font-bold">{stats.avgScore}%</div>
               <p className="text-xs text-muted-foreground">
-                No quizzes yet
+                {stats.quizzes > 0 ? 'Across all quizzes' : 'No quizzes yet'}
               </p>
             </CardContent>
           </Card>
@@ -77,13 +102,27 @@ export default function Dashboard() {
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Today's Schedule</CardTitle>
-              <CardDescription>Your planned study sessions for today</CardDescription>
+              <CardTitle>Today's Sessions</CardTitle>
+              <CardDescription>Your study sessions for today</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                No sessions scheduled yet. Start by creating your study timetable!
-              </p>
+              {todaySessions.length > 0 ? (
+                <div className="space-y-3">
+                  {todaySessions.map((s, i) => (
+                    <div key={i} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                      <div>
+                        <span className="font-medium capitalize">{s.subject?.replace('_', ' ')}</span>
+                        <span className="text-muted-foreground ml-2">— {s.topic}</span>
+                      </div>
+                      <span className="text-muted-foreground">{s.duration ? `${s.duration} min` : 'In progress'}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No sessions yet today. Start a focus session!
+                </p>
+              )}
             </CardContent>
           </Card>
 

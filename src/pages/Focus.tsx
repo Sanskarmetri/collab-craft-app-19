@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, Square, Coffee, AlertTriangle } from 'lucide-react';
+import { Play, Pause, Square, Coffee, AlertTriangle, Shield, Download, Chrome } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import {
   AlertDialog,

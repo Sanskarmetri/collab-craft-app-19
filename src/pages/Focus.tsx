@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Play, Pause, Square, Coffee, AlertTriangle } from 'lucide-react';
+import { Play, Pause, Square, Coffee, AlertTriangle, Shield, Download, Chrome } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import {
   AlertDialog,
@@ -305,6 +305,60 @@ export default function Focus() {
                 <div className="text-2xl font-bold">{todayStats.streak}</div>
                 <div className="text-xs text-muted-foreground">Day Streak</div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Focus Lock Extension Card */}
+        <Card className="mt-6 border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-primary" />
+              Focus Lock Extension
+            </CardTitle>
+            <CardDescription>
+              Block distracting websites like YouTube, Instagram, Facebook, Reddit, Netflix & TikTok during study sessions
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              {['youtube.com', 'instagram.com', 'facebook.com', 'twitter.com', 'reddit.com', 'netflix.com', 'tiktok.com'].map((site) => (
+                <div key={site} className="flex items-center gap-2 text-muted-foreground">
+                  <span className="text-destructive">🚫</span> {site}
+                </div>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                fetch('/studybyself-focus-extension.zip')
+                  .then((res) => {
+                    if (!res.ok) throw new Error('Download failed');
+                    return res.blob();
+                  })
+                  .then((blob) => {
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = 'studybyself-focus-extension.zip';
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                  })
+                  .catch(() => alert('Download failed. Please try again.'));
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download Chrome Extension
+            </Button>
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p className="font-medium">Installation:</p>
+              <ol className="list-decimal list-inside space-y-0.5">
+                <li>Unzip the downloaded file</li>
+                <li>Open <code className="bg-muted px-1 rounded">chrome://extensions</code></li>
+                <li>Enable <strong>Developer mode</strong> (top-right toggle)</li>
+                <li>Click <strong>Load unpacked</strong> → select the unzipped folder</li>
+              </ol>
+              <p className="mt-1">Works with Chrome, Edge, Brave, Arc & Opera.</p>
             </div>
           </CardContent>
         </Card>

@@ -73,38 +73,52 @@ serve(async (req) => {
     // Determine question selection strategy
     let questions: any[] = [];
     
+    // Normalize subject
+    const normalizedSubject = subject === 'science' ? 'science_tech' : subject;
+    
     if (quizType === 'daily') {
-      // Daily quiz: 10 mixed difficulty questions
+      // Daily quiz: random mixed difficulty questions
       const { data, error } = await supabase
-        .from('questions')
-        .select('*')
-        .eq('subject', subject)
-        .eq('question_type', 'mcq')
-        .limit(numQuestions);
+        .rpc('get_random_questions', { 
+          p_subject: normalizedSubject, 
+          p_limit: numQuestions 
+        })
+        .select('*');
       
-      if (error) throw error;
-      questions = data || [];
+      // Fallback to regular query if RPC doesn't exist
+      if (error) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('questions')
+          .select('*')
+          .eq('subject', normalizedSubject)
+          .eq('question_type', 'mcq')
+          .limit(numQuestions * 3);
+        
+        if (fallbackError) throw fallbackError;
+        // Shuffle in JS as fallback
+        questions = (fallbackData || []).sort(() => Math.random() - 0.5).slice(0, numQuestions);
+      } else {
+        questions = data || [];
+      }
     } else if (quizType === 'topic' || quizType === 'topic_wise') {
-      // Topic quiz: focused on specific difficulty
       const { data, error } = await supabase
         .from('questions')
         .select('*')
-        .eq('subject', subject)
+        .eq('subject', normalizedSubject)
         .eq('difficulty', difficulty)
-        .limit(numQuestions);
+        .limit(numQuestions * 3);
       
       if (error) throw error;
-      questions = data || [];
+      questions = (data || []).sort(() => Math.random() - 0.5).slice(0, numQuestions);
     } else if (quizType === 'full_mock' || quizType === 'full_length') {
-      // Full mock: comprehensive selection across all subjects
       const { data, error } = await supabase
         .from('questions')
         .select('*')
         .eq('question_type', 'mcq')
-        .limit(100);
+        .limit(300);
       
       if (error) throw error;
-      questions = data || [];
+      questions = (data || []).sort(() => Math.random() - 0.5).slice(0, 100);
     }
 
     // If we don't have enough questions, generate more with AI

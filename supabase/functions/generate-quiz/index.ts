@@ -180,7 +180,7 @@ serve(async (req) => {
           
           // Insert generated questions into database
           const questionsToInsert = generatedQuestions.map((q: any) => ({
-            subject,
+            subject: normalizedSubject,
             topic: q.topic || 'General',
             question_type: 'mcq',
             question_text: q.question_text,

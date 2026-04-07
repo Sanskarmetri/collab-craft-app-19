@@ -18,7 +18,7 @@ serve(async (req) => {
 
     // Validate input with proper bounds
     const validQuizTypes = ['daily', 'topic', 'full_mock', 'topic_wise', 'full_length'];
-    const validSubjects = ['history', 'geography', 'polity', 'economics', 'science_tech', 'ethics', 'current_affairs'];
+    const validSubjects = ['history', 'geography', 'polity', 'economics', 'science_tech', 'science', 'ethics', 'current_affairs'];
     const validDifficulties = ['easy', 'medium', 'hard'];
 
     if (!quizType || !validQuizTypes.includes(quizType)) {
@@ -73,38 +73,52 @@ serve(async (req) => {
     // Determine question selection strategy
     let questions: any[] = [];
     
+    // Normalize subject
+    const normalizedSubject = subject === 'science' ? 'science_tech' : subject;
+    
     if (quizType === 'daily') {
-      // Daily quiz: 10 mixed difficulty questions
+      // Daily quiz: random mixed difficulty questions
       const { data, error } = await supabase
-        .from('questions')
-        .select('*')
-        .eq('subject', subject)
-        .eq('question_type', 'mcq')
-        .limit(numQuestions);
+        .rpc('get_random_questions', { 
+          p_subject: normalizedSubject, 
+          p_limit: numQuestions 
+        })
+        .select('*');
       
-      if (error) throw error;
-      questions = data || [];
+      // Fallback to regular query if RPC doesn't exist
+      if (error) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('questions')
+          .select('*')
+          .eq('subject', normalizedSubject)
+          .eq('question_type', 'mcq')
+          .limit(numQuestions * 3);
+        
+        if (fallbackError) throw fallbackError;
+        // Shuffle in JS as fallback
+        questions = (fallbackData || []).sort(() => Math.random() - 0.5).slice(0, numQuestions);
+      } else {
+        questions = data || [];
+      }
     } else if (quizType === 'topic' || quizType === 'topic_wise') {
-      // Topic quiz: focused on specific difficulty
       const { data, error } = await supabase
         .from('questions')
         .select('*')
-        .eq('subject', subject)
+        .eq('subject', normalizedSubject)
         .eq('difficulty', difficulty)
-        .limit(numQuestions);
+        .limit(numQuestions * 3);
       
       if (error) throw error;
-      questions = data || [];
+      questions = (data || []).sort(() => Math.random() - 0.5).slice(0, numQuestions);
     } else if (quizType === 'full_mock' || quizType === 'full_length') {
-      // Full mock: comprehensive selection across all subjects
       const { data, error } = await supabase
         .from('questions')
         .select('*')
         .eq('question_type', 'mcq')
-        .limit(100);
+        .limit(300);
       
       if (error) throw error;
-      questions = data || [];
+      questions = (data || []).sort(() => Math.random() - 0.5).slice(0, 100);
     }
 
     // If we don't have enough questions, generate more with AI
@@ -119,7 +133,8 @@ serve(async (req) => {
 
       // Generate questions using AI
       const questionsNeeded = numQuestions - (questions?.length || 0);
-      const prompt = `Generate ${questionsNeeded} multiple choice questions for UPSC ${subject} exam at ${difficulty} difficulty level.
+      const randomSeed = Date.now();
+      const prompt = `Generate ${questionsNeeded} UNIQUE multiple choice questions for UPSC ${normalizedSubject} exam at ${difficulty} difficulty level. Use seed ${randomSeed} for variety. Mix topics within the subject. Do NOT repeat common questions.
       
       Format each question as JSON with this structure:
       {
@@ -142,10 +157,10 @@ serve(async (req) => {
         body: JSON.stringify({
           model: 'google/gemini-2.5-flash',
           messages: [
-            { role: 'system', content: 'You are an expert UPSC question setter. Generate high-quality exam questions.' },
+            { role: 'system', content: 'You are an expert UPSC question setter. Generate high-quality, diverse exam questions. Never repeat the same questions.' },
             { role: 'user', content: prompt }
           ],
-          temperature: 0.7,
+          temperature: 0.9,
         }),
       });
 
@@ -165,7 +180,7 @@ serve(async (req) => {
           
           // Insert generated questions into database
           const questionsToInsert = generatedQuestions.map((q: any) => ({
-            subject,
+            subject: normalizedSubject,
             topic: q.topic || 'General',
             question_type: 'mcq',
             question_text: q.question_text,

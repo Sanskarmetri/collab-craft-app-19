@@ -59,7 +59,7 @@ const subjects = [
   { value: 'history', label: 'History' },
   { value: 'geography', label: 'Geography' },
   { value: 'economics', label: 'Economics' },
-  { value: 'science', label: 'Science & Technology' },
+  { value: 'science_tech', label: 'Science & Technology' },
   { value: 'current_affairs', label: 'Current Affairs' },
   { value: 'ethics', label: 'Ethics' },
 ];

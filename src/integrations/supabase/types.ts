@@ -244,6 +244,105 @@ export type Database = {
         }
         Relationships: []
       }
+      questions: {
+        Row: {
+          correct_answer: string | null
+          created_at: string
+          difficulty: string
+          explanation: string | null
+          id: string
+          metadata: Json | null
+          options: Json | null
+          question_text: string
+          question_type: string
+          subject: string
+          topic: string
+        }
+        Insert: {
+          correct_answer?: string | null
+          created_at?: string
+          difficulty?: string
+          explanation?: string | null
+          id?: string
+          metadata?: Json | null
+          options?: Json | null
+          question_text: string
+          question_type?: string
+          subject: string
+          topic?: string
+        }
+        Update: {
+          correct_answer?: string | null
+          created_at?: string
+          difficulty?: string
+          explanation?: string | null
+          id?: string
+          metadata?: Json | null
+          options?: Json | null
+          question_text?: string
+          question_type?: string
+          subject?: string
+          topic?: string
+        }
+        Relationships: []
+      }
+      quiz_attempts: {
+        Row: {
+          answered_questions: number | null
+          completed_at: string | null
+          created_at: string
+          feedback: Json | null
+          grading_results: Json | null
+          id: string
+          questions: Json
+          quiz_type: string
+          score: number | null
+          started_at: string
+          status: string
+          subject: string
+          time_limit: number
+          time_taken: number | null
+          total_questions: number
+          user_id: string
+        }
+        Insert: {
+          answered_questions?: number | null
+          completed_at?: string | null
+          created_at?: string
+          feedback?: Json | null
+          grading_results?: Json | null
+          id?: string
+          questions?: Json
+          quiz_type: string
+          score?: number | null
+          started_at?: string
+          status?: string
+          subject: string
+          time_limit?: number
+          time_taken?: number | null
+          total_questions?: number
+          user_id: string
+        }
+        Update: {
+          answered_questions?: number | null
+          completed_at?: string | null
+          created_at?: string
+          feedback?: Json | null
+          grading_results?: Json | null
+          id?: string
+          questions?: Json
+          quiz_type?: string
+          score?: number | null
+          started_at?: string
+          status?: string
+          subject?: string
+          time_limit?: number
+          time_taken?: number | null
+          total_questions?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       quizzes: {
         Row: {
           created_at: string

@@ -18,7 +18,7 @@ serve(async (req) => {
 
     // Validate input with proper bounds
     const validQuizTypes = ['daily', 'topic', 'full_mock', 'topic_wise', 'full_length'];
-    const validSubjects = ['history', 'geography', 'polity', 'economics', 'science_tech', 'ethics', 'current_affairs'];
+    const validSubjects = ['history', 'geography', 'polity', 'economics', 'science_tech', 'science', 'ethics', 'current_affairs'];
     const validDifficulties = ['easy', 'medium', 'hard'];
 
     if (!quizType || !validQuizTypes.includes(quizType)) {

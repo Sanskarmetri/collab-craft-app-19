@@ -133,7 +133,8 @@ serve(async (req) => {
 
       // Generate questions using AI
       const questionsNeeded = numQuestions - (questions?.length || 0);
-      const prompt = `Generate ${questionsNeeded} multiple choice questions for UPSC ${subject} exam at ${difficulty} difficulty level.
+      const randomSeed = Date.now();
+      const prompt = `Generate ${questionsNeeded} UNIQUE multiple choice questions for UPSC ${normalizedSubject} exam at ${difficulty} difficulty level. Use seed ${randomSeed} for variety. Mix topics within the subject. Do NOT repeat common questions.
       
       Format each question as JSON with this structure:
       {
@@ -156,10 +157,10 @@ serve(async (req) => {
         body: JSON.stringify({
           model: 'google/gemini-2.5-flash',
           messages: [
-            { role: 'system', content: 'You are an expert UPSC question setter. Generate high-quality exam questions.' },
+            { role: 'system', content: 'You are an expert UPSC question setter. Generate high-quality, diverse exam questions. Never repeat the same questions.' },
             { role: 'user', content: prompt }
           ],
-          temperature: 0.7,
+          temperature: 0.9,
         }),
       });
 

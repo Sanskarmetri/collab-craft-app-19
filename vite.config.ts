@@ -15,7 +15,8 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt'],
+      devOptions: { enabled: false },
+      includeAssets: ['favicon.ico', 'robots.txt', 'icon-192.png', 'icon-512.png'],
       manifest: {
         name: 'Studybyself - UPSC & PSC Preparation',
         short_name: 'Studybyself',
@@ -41,6 +42,7 @@ export default defineConfig(({ mode }) => ({
         ]
       },
       workbox: {
+        navigateFallbackDenylist: [/^\/~oauth/],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         runtimeCaching: [
           {

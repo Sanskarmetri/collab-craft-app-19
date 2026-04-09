@@ -79,7 +79,25 @@ export default function News() {
     }
   };
 
-  const paperInfo = newspapers.find((p) => p.id === selectedPaper);
+  const generateNewsQuiz = async () => {
+    if (articles.length === 0) return;
+    setQuizLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-news-quiz', {
+        body: { articles, numberOfQuestions: 10 },
+      });
+      if (error) throw error;
+      toast({ title: 'Quiz Ready!', description: `${data.totalQuestions} questions generated from today's news.` });
+      navigate('/quiz', { state: { newsQuizAttempt: data } });
+    } catch (err: any) {
+      console.error('Error generating news quiz:', err);
+      toast({ title: 'Error', description: 'Failed to generate quiz. Please try again.', variant: 'destructive' });
+    } finally {
+      setQuizLoading(false);
+    }
+  };
+
+
 
   return (
     <AppLayout>

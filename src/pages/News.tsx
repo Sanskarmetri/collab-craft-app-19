@@ -46,9 +46,11 @@ const categoryColors: Record<string, string> = {
 };
 
 export default function News() {
+  const navigate = useNavigate();
   const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(false);
+  const [quizLoading, setQuizLoading] = useState(false);
   const [date, setDate] = useState('');
   const { toast } = useToast();
 

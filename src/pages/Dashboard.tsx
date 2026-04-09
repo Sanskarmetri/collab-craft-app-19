@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, Target, BookOpen, TrendingUp, Play, Brain, Calendar } from 'lucide-react';
+import { Clock, Target, BookOpen, TrendingUp, Play, Brain, Calendar, Newspaper } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -154,6 +154,12 @@ export default function Dashboard() {
                 <Link to="/timetable">
                   <Calendar className="mr-2 h-4 w-4" />
                   View Timetable
+                </Link>
+              </Button>
+              <Button className="w-full" variant="outline" asChild>
+                <Link to="/news">
+                  <Newspaper className="mr-2 h-4 w-4" />
+                  UPSC Daily News
                 </Link>
               </Button>
             </CardContent>

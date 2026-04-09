@@ -19,6 +19,7 @@ import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import Subscription from "./pages/Subscription";
 import LaunchChecklist from "./pages/LaunchChecklist";
+import News from "./pages/News";
 import TermsOfService from "./pages/legal/TermsOfService";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import CookiePolicy from "./pages/legal/CookiePolicy";
@@ -115,6 +116,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <LaunchChecklist />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/news"
+              element={
+                <ProtectedRoute>
+                  <News />
                 </ProtectedRoute>
               }
             />

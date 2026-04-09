@@ -1,4 +1,4 @@
-import { Home, MessageSquare, Clock, BarChart3, User } from 'lucide-react';
+import { Home, MessageSquare, Clock, Newspaper, User } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -6,7 +6,7 @@ const navItems = [
   { icon: Home, label: 'Home', path: '/dashboard' },
   { icon: MessageSquare, label: 'Chat', path: '/chat' },
   { icon: Clock, label: 'Focus', path: '/focus' },
-  { icon: BarChart3, label: 'Analytics', path: '/analytics' },
+  { icon: Newspaper, label: 'News', path: '/news' },
   { icon: User, label: 'Profile', path: '/profile' },
 ];
 

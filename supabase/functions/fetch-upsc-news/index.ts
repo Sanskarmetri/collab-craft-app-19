@@ -62,7 +62,7 @@ Return ONLY a valid JSON array with this structure:
   "importance": "high" | "medium"
 }]`;
 
-    const response = await fetch('https://ai.lovable.dev/chat/v1/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,

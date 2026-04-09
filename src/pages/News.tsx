@@ -155,18 +155,30 @@ export default function News() {
           </>
         ) : (
           <>
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => setSelectedPaper(null)}>
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold flex items-center gap-2">
-                  {paperInfo?.icon} {paperInfo?.name}
-                </h1>
-                {date && (
-                  <p className="text-sm text-muted-foreground">{date} — UPSC Relevant News</p>
-                )}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" onClick={() => setSelectedPaper(null)}>
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <div>
+                  <h1 className="text-2xl font-bold flex items-center gap-2">
+                    {paperInfo?.icon} {paperInfo?.name}
+                  </h1>
+                  {date && (
+                    <p className="text-sm text-muted-foreground">{date} — UPSC Relevant News</p>
+                  )}
+                </div>
               </div>
+              {articles.length > 0 && !loading && (
+                <Button onClick={generateNewsQuiz} disabled={quizLoading} className="shrink-0">
+                  {quizLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Brain className="mr-2 h-4 w-4" />
+                  )}
+                  {quizLoading ? 'Generating...' : 'Quiz from News'}
+                </Button>
+              )}
             </div>
 
             {loading ? (

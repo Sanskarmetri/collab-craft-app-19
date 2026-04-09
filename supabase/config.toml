@@ -55,3 +55,7 @@ verify_jwt = false
 [[edge_runtime.functions]]
 name = "submit-feedback"
 verify_jwt = true
+
+[[edge_runtime.functions]]
+name = "fetch-upsc-news"
+verify_jwt = true

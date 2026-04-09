@@ -66,6 +66,7 @@ const subjects = [
 ];
 
 export default function Quiz() {
+  const location = useLocation();
   const quiz = useQuiz();
   const [selectedQuizType, setSelectedQuizType] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
@@ -78,6 +79,17 @@ export default function Quiz() {
   useEffect(() => {
     loadQuizHistory();
   }, []);
+
+  // Handle news quiz navigation state
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.newsQuizAttempt) {
+      const data = state.newsQuizAttempt;
+      quiz.startQuiz('daily', 'current_affairs', data.totalQuestions).catch(() => {});
+      // Clear location state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const loadQuizHistory = async () => {
     const history = await quiz.fetchQuizHistory(5);

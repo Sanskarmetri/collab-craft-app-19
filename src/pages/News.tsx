@@ -96,6 +96,7 @@ export default function News() {
       setQuizLoading(false);
     }
   };
+  const paperInfo = newspapers.find((p) => p.id === selectedPaper);
 
 
 

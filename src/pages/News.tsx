@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Newspaper, BookOpen, Star, Tag } from 'lucide-react';
+import { ArrowLeft, Newspaper, BookOpen, Star, Tag, Brain, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -45,9 +46,11 @@ const categoryColors: Record<string, string> = {
 };
 
 export default function News() {
+  const navigate = useNavigate();
   const [selectedPaper, setSelectedPaper] = useState<string | null>(null);
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(false);
+  const [quizLoading, setQuizLoading] = useState(false);
   const [date, setDate] = useState('');
   const { toast } = useToast();
 
@@ -76,7 +79,26 @@ export default function News() {
     }
   };
 
+  const generateNewsQuiz = async () => {
+    if (articles.length === 0) return;
+    setQuizLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-news-quiz', {
+        body: { articles, numberOfQuestions: 10 },
+      });
+      if (error) throw error;
+      toast({ title: 'Quiz Ready!', description: `${data.totalQuestions} questions generated from today's news.` });
+      navigate('/quiz', { state: { newsQuizAttempt: data } });
+    } catch (err: any) {
+      console.error('Error generating news quiz:', err);
+      toast({ title: 'Error', description: 'Failed to generate quiz. Please try again.', variant: 'destructive' });
+    } finally {
+      setQuizLoading(false);
+    }
+  };
   const paperInfo = newspapers.find((p) => p.id === selectedPaper);
+
+
 
   return (
     <AppLayout>
@@ -133,18 +155,30 @@ export default function News() {
           </>
         ) : (
           <>
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => setSelectedPaper(null)}>
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold flex items-center gap-2">
-                  {paperInfo?.icon} {paperInfo?.name}
-                </h1>
-                {date && (
-                  <p className="text-sm text-muted-foreground">{date} — UPSC Relevant News</p>
-                )}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" onClick={() => setSelectedPaper(null)}>
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <div>
+                  <h1 className="text-2xl font-bold flex items-center gap-2">
+                    {paperInfo?.icon} {paperInfo?.name}
+                  </h1>
+                  {date && (
+                    <p className="text-sm text-muted-foreground">{date} — UPSC Relevant News</p>
+                  )}
+                </div>
               </div>
+              {articles.length > 0 && !loading && (
+                <Button onClick={generateNewsQuiz} disabled={quizLoading} className="shrink-0">
+                  {quizLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Brain className="mr-2 h-4 w-4" />
+                  )}
+                  {quizLoading ? 'Generating...' : 'Quiz from News'}
+                </Button>
+              )}
             </div>
 
             {loading ? (

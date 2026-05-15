@@ -128,6 +128,14 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/world-map"
+              element={
+                <ProtectedRoute>
+                  <WorldMap />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/legal/terms" element={<TermsOfService />} />
             <Route path="/legal/privacy" element={<PrivacyPolicy />} />
             <Route path="/legal/cookies" element={<CookiePolicy />} />

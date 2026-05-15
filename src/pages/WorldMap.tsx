@@ -58,21 +58,24 @@ export default function WorldMap() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CountryData | null>(null);
-  const [marker, setMarker] = useState<[number, number] | null>(null);
+  const [geo, setGeo] = useState<any>(null);
+  const [selectedName, setSelectedName] = useState<string | null>(null);
+  const geoLayerRef = useRef<L.GeoJSON | null>(null);
 
-  const handlePick = async (lat: number, lng: number) => {
-    setMarker([lat, lng]);
+  useEffect(() => {
+    fetch(GEOJSON_URL)
+      .then((r) => r.json())
+      .then(setGeo)
+      .catch((e) => console.error('GeoJSON load failed', e));
+  }, []);
+
+  const fetchCountry = async (name: string, code?: string) => {
+    setSelectedName(name);
     setLoading(true);
     setData(null);
     try {
-      const geo = await reverseGeocode(lat, lng);
-      if (!geo) {
-        toast({ title: 'No country found', description: 'Click on land area.', variant: 'destructive' });
-        setLoading(false);
-        return;
-      }
       const { data: news, error } = await supabase.functions.invoke('fetch-country-news', {
-        body: { country: geo.name, countryCode: geo.code },
+        body: { country: name, countryCode: code },
       });
       if (error) throw error;
       setData(news);
@@ -84,6 +87,46 @@ export default function WorldMap() {
     }
   };
 
+  const baseStyle = {
+    fillColor: 'hsl(var(--primary))',
+    fillOpacity: 0.05,
+    color: 'hsl(var(--primary))',
+    weight: 0.6,
+    opacity: 0.5,
+  } as L.PathOptions;
+  const hoverStyle = { fillOpacity: 0.35, weight: 1.5, opacity: 1 } as L.PathOptions;
+  const selectedStyle = {
+    fillColor: 'hsl(var(--primary))',
+    fillOpacity: 0.55,
+    color: 'hsl(var(--primary))',
+    weight: 2,
+    opacity: 1,
+  } as L.PathOptions;
+
+  const onEachFeature = (feature: any, layer: L.Layer) => {
+    const name = getCountryName(feature.properties);
+    const code = getCountryCode(feature.properties);
+    layer.bindTooltip(name, { sticky: true, direction: 'top', className: 'country-tooltip' });
+    layer.on({
+      mouseover: (e) => {
+        if (selectedName !== name) (e.target as L.Path).setStyle(hoverStyle);
+      },
+      mouseout: (e) => {
+        if (selectedName !== name) (e.target as L.Path).setStyle(baseStyle);
+      },
+      click: () => fetchCountry(name, code),
+    });
+  };
+
+  // Re-style when selection changes
+  useEffect(() => {
+    if (!geoLayerRef.current) return;
+    geoLayerRef.current.eachLayer((layer: any) => {
+      const name = getCountryName(layer.feature?.properties);
+      layer.setStyle(name === selectedName ? selectedStyle : baseStyle);
+    });
+  }, [selectedName]);
+
   return (
     <AppLayout>
       <div className="space-y-4">
@@ -93,7 +136,7 @@ export default function WorldMap() {
             World News Map
           </h1>
           <p className="text-muted-foreground mt-1">
-            Click any country to see today's UPSC-relevant news. Switch between Standard, Satellite, and Terrain views.
+            Hover a country to see its name, click to load today's UPSC-relevant news. Switch between Standard, Satellite, Terrain, and Dark views.
           </p>
         </div>
 
@@ -133,12 +176,20 @@ export default function WorldMap() {
                     />
                   </LayersControl.BaseLayer>
                 </LayersControl>
-                <ClickHandler onPick={handlePick} />
-                {marker && (
-                  <Marker position={marker}>
-                    <Popup>{data?.country || 'Loading...'}</Popup>
-                  </Marker>
+                {geo && (
+                  <GeoJSON
+                    data={geo}
+                    style={baseStyle as any}
+                    onEachFeature={onEachFeature}
+                    ref={(r: any) => {
+                      geoLayerRef.current = r || null;
+                    }}
+                  />
                 )}
+              </MapContainer>
+            </div>
+          </Card>
+
               </MapContainer>
             </div>
           </Card>

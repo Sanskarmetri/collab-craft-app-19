@@ -44,26 +44,14 @@ const categoryColors: Record<string, string> = {
   Environment: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
 };
 
-function ClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click: (e) => onPick(e.latlng.lat, e.latlng.lng),
-  });
-  return null;
-}
+const GEOJSON_URL =
+  'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson';
 
-async function reverseGeocode(lat: number, lng: number): Promise<{ name: string; code?: string } | null> {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=3&accept-language=en`
-    );
-    const data = await res.json();
-    const name = data?.address?.country;
-    const code = data?.address?.country_code?.toUpperCase();
-    if (!name) return null;
-    return { name, code };
-  } catch {
-    return null;
-  }
+function getCountryName(props: any): string {
+  return props?.NAME || props?.ADMIN || props?.name || 'Unknown';
+}
+function getCountryCode(props: any): string | undefined {
+  return props?.ISO_A2 || props?.iso_a2 || undefined;
 }
 
 export default function WorldMap() {

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, LayersControl } from 'react-leaflet';
+import { useEffect, useState, useRef } from 'react';
+import { MapContainer, TileLayer, GeoJSON, LayersControl, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import AppLayout from '@/components/layout/AppLayout';
@@ -44,47 +44,38 @@ const categoryColors: Record<string, string> = {
   Environment: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
 };
 
-function ClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click: (e) => onPick(e.latlng.lat, e.latlng.lng),
-  });
-  return null;
-}
+const GEOJSON_URL =
+  'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson';
 
-async function reverseGeocode(lat: number, lng: number): Promise<{ name: string; code?: string } | null> {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=3&accept-language=en`
-    );
-    const data = await res.json();
-    const name = data?.address?.country;
-    const code = data?.address?.country_code?.toUpperCase();
-    if (!name) return null;
-    return { name, code };
-  } catch {
-    return null;
-  }
+function getCountryName(props: any): string {
+  return props?.NAME || props?.ADMIN || props?.name || 'Unknown';
+}
+function getCountryCode(props: any): string | undefined {
+  return props?.ISO_A2 || props?.iso_a2 || undefined;
 }
 
 export default function WorldMap() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<CountryData | null>(null);
-  const [marker, setMarker] = useState<[number, number] | null>(null);
+  const [geo, setGeo] = useState<any>(null);
+  const [selectedName, setSelectedName] = useState<string | null>(null);
+  const geoLayerRef = useRef<L.GeoJSON | null>(null);
 
-  const handlePick = async (lat: number, lng: number) => {
-    setMarker([lat, lng]);
+  useEffect(() => {
+    fetch(GEOJSON_URL)
+      .then((r) => r.json())
+      .then(setGeo)
+      .catch((e) => console.error('GeoJSON load failed', e));
+  }, []);
+
+  const fetchCountry = async (name: string, code?: string) => {
+    setSelectedName(name);
     setLoading(true);
     setData(null);
     try {
-      const geo = await reverseGeocode(lat, lng);
-      if (!geo) {
-        toast({ title: 'No country found', description: 'Click on land area.', variant: 'destructive' });
-        setLoading(false);
-        return;
-      }
       const { data: news, error } = await supabase.functions.invoke('fetch-country-news', {
-        body: { country: geo.name, countryCode: geo.code },
+        body: { country: name, countryCode: code },
       });
       if (error) throw error;
       setData(news);
@@ -96,6 +87,46 @@ export default function WorldMap() {
     }
   };
 
+  const baseStyle = {
+    fillColor: 'hsl(var(--primary))',
+    fillOpacity: 0.05,
+    color: 'hsl(var(--primary))',
+    weight: 0.6,
+    opacity: 0.5,
+  } as L.PathOptions;
+  const hoverStyle = { fillOpacity: 0.35, weight: 1.5, opacity: 1 } as L.PathOptions;
+  const selectedStyle = {
+    fillColor: 'hsl(var(--primary))',
+    fillOpacity: 0.55,
+    color: 'hsl(var(--primary))',
+    weight: 2,
+    opacity: 1,
+  } as L.PathOptions;
+
+  const onEachFeature = (feature: any, layer: L.Layer) => {
+    const name = getCountryName(feature.properties);
+    const code = getCountryCode(feature.properties);
+    layer.bindTooltip(name, { sticky: true, direction: 'top', className: 'country-tooltip' });
+    layer.on({
+      mouseover: (e) => {
+        if (selectedName !== name) (e.target as L.Path).setStyle(hoverStyle);
+      },
+      mouseout: (e) => {
+        if (selectedName !== name) (e.target as L.Path).setStyle(baseStyle);
+      },
+      click: () => fetchCountry(name, code),
+    });
+  };
+
+  // Re-style when selection changes
+  useEffect(() => {
+    if (!geoLayerRef.current) return;
+    geoLayerRef.current.eachLayer((layer: any) => {
+      const name = getCountryName(layer.feature?.properties);
+      layer.setStyle(name === selectedName ? selectedStyle : baseStyle);
+    });
+  }, [selectedName]);
+
   return (
     <AppLayout>
       <div className="space-y-4">
@@ -105,7 +136,7 @@ export default function WorldMap() {
             World News Map
           </h1>
           <p className="text-muted-foreground mt-1">
-            Click any country to see today's UPSC-relevant news. Switch between Standard, Satellite, and Terrain views.
+            Hover a country to see its name, click to load today's UPSC-relevant news. Switch between Standard, Satellite, Terrain, and Dark views.
           </p>
         </div>
 
@@ -145,18 +176,22 @@ export default function WorldMap() {
                     />
                   </LayersControl.BaseLayer>
                 </LayersControl>
-                <ClickHandler onPick={handlePick} />
-                {marker && (
-                  <Marker position={marker}>
-                    <Popup>{data?.country || 'Loading...'}</Popup>
-                  </Marker>
+                {geo && (
+                  <GeoJSON
+                    data={geo}
+                    style={baseStyle as any}
+                    onEachFeature={onEachFeature}
+                    ref={(r: any) => {
+                      geoLayerRef.current = r || null;
+                    }}
+                  />
                 )}
               </MapContainer>
             </div>
           </Card>
 
           <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
-            {!marker && !loading && (
+            {!selectedName && !loading && (
               <Card className="border-dashed">
                 <CardContent className="p-6 text-center text-muted-foreground">
                   <MapPin className="h-10 w-10 mx-auto mb-2 opacity-50" />
@@ -190,7 +225,7 @@ export default function WorldMap() {
                           <p className="text-xs text-muted-foreground">{data.date}</p>
                         )}
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => { setData(null); setMarker(null); }}>
+                      <Button variant="ghost" size="icon" onClick={() => { setData(null); setSelectedName(null); }}>
                         <X className="h-4 w-4" />
                       </Button>
                     </div>

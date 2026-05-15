@@ -190,12 +190,8 @@ export default function WorldMap() {
             </div>
           </Card>
 
-              </MapContainer>
-            </div>
-          </Card>
-
           <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
-            {!marker && !loading && (
+            {!selectedName && !loading && (
               <Card className="border-dashed">
                 <CardContent className="p-6 text-center text-muted-foreground">
                   <MapPin className="h-10 w-10 mx-auto mb-2 opacity-50" />

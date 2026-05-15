@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Newspaper, BookOpen, Star, Tag, Brain, Loader2 } from 'lucide-react';
+import { ArrowLeft, Newspaper, BookOpen, Star, Tag, Brain, Loader2, Globe } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -114,6 +114,26 @@ export default function News() {
                 AI-curated UPSC-relevant news from top newspapers
               </p>
             </div>
+
+            <Card
+              className="cursor-pointer hover:shadow-lg transition-all hover:scale-[1.01] overflow-hidden group border-primary/30"
+              onClick={() => navigate('/world-map')}
+            >
+              <div className="h-2 bg-gradient-to-r from-primary to-purple-600" />
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <Globe className="h-10 w-10 text-primary" />
+                  <div>
+                    <CardTitle className="text-xl group-hover:text-primary transition-colors">
+                      Interactive World News Map
+                    </CardTitle>
+                    <CardDescription>
+                      Click any country on a Google-Maps-style map to see today's UPSC-relevant news
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
 
             <div className="grid gap-6 md:grid-cols-2">
               {newspapers.map((paper) => (

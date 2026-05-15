@@ -20,6 +20,7 @@ import Settings from "./pages/Settings";
 import Subscription from "./pages/Subscription";
 import LaunchChecklist from "./pages/LaunchChecklist";
 import News from "./pages/News";
+import WorldMap from "./pages/WorldMap";
 import TermsOfService from "./pages/legal/TermsOfService";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import CookiePolicy from "./pages/legal/CookiePolicy";
@@ -124,6 +125,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <News />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/world-map"
+              element={
+                <ProtectedRoute>
+                  <WorldMap />
                 </ProtectedRoute>
               }
             />

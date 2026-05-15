@@ -225,7 +225,7 @@ export default function WorldMap() {
                           <p className="text-xs text-muted-foreground">{data.date}</p>
                         )}
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => { setData(null); setMarker(null); }}>
+                      <Button variant="ghost" size="icon" onClick={() => { setData(null); setSelectedName(null); }}>
                         <X className="h-4 w-4" />
                       </Button>
                     </div>

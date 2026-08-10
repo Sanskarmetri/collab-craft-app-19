@@ -1,16 +1,86 @@
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// In-memory cache (per edge instance) — fastest layer, survives warm invocations
+const memCache = new Map<string, { at: number; data: unknown }>();
+const MEM_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+// Best-effort in-memory rate limit (per instance): N AI generations per caller per window
+const RL_WINDOW_MS = 60 * 1000;
+const RL_MAX = 6;
+const rlHits = new Map<string, number[]>();
+
+function rateLimited(key: string): boolean {
+  const now = Date.now();
+  const hits = (rlHits.get(key) || []).filter((t) => now - t < RL_WINDOW_MS);
+  if (hits.length >= RL_MAX) {
+    rlHits.set(key, hits);
+    return true;
+  }
+  hits.push(now);
+  rlHits.set(key, hits);
+  return false;
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
     const { country, countryCode } = await req.json();
-    if (!country) {
-      return new Response(JSON.stringify({ error: 'country required' }), {
+    if (!country || typeof country !== 'string' || country.length > 100) {
+      return new Response(JSON.stringify({ error: 'valid country required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const today = new Date().toLocaleDateString('en-IN', {
+      day: 'numeric', month: 'long', year: 'numeric',
+    });
+    const cacheKey = `${country.toLowerCase()}|${todayIso}`;
+
+    // 1) Memory cache
+    const hit = memCache.get(cacheKey);
+    if (hit && Date.now() - hit.at < MEM_TTL_MS) {
+      return new Response(JSON.stringify({ ...(hit.data as object), date: today, cached: 'memory' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Service client for the shared DB cache
+    const admin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } },
+    );
+
+    // 2) Shared DB cache
+    try {
+      const { data: row } = await admin
+        .from('country_news_cache')
+        .select('payload')
+        .eq('country', country)
+        .eq('news_date', todayIso)
+        .maybeSingle();
+      if (row?.payload) {
+        memCache.set(cacheKey, { at: Date.now(), data: row.payload });
+        return new Response(JSON.stringify({ ...row.payload, date: today, cached: 'db' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } catch (e) {
+      console.error('cache read failed', e);
+    }
+
+    // 3) Rate limit before hitting the AI gateway
+    const caller = req.headers.get('authorization')?.slice(-24) || req.headers.get('x-forwarded-for') || 'anon';
+    if (rateLimited(caller)) {
+      return new Response(JSON.stringify({ error: 'Too many requests. Please wait a moment and try again.' }), {
+        status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -20,10 +90,6 @@ Deno.serve(async (req) => {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const today = new Date().toLocaleDateString('en-IN', {
-      day: 'numeric', month: 'long', year: 'numeric',
-    });
 
     const prompt = `You are a UPSC current affairs expert. Generate today's (${today}) latest UPSC-relevant news about ${country}${countryCode ? ` (${countryCode})` : ''}.
 
@@ -53,6 +119,12 @@ Return ONLY a valid JSON object:
       }),
     });
 
+    if (response.status === 429 || response.status === 402) {
+      return new Response(JSON.stringify({ error: response.status === 429 ? 'AI rate limit reached, try again shortly.' : 'AI credits exhausted.' }), {
+        status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (!response.ok) {
       const errText = await response.text();
       console.error('AI error:', errText);
@@ -65,10 +137,23 @@ Return ONLY a valid JSON object:
     let content = aiData.choices?.[0]?.message?.content || '{}';
     content = content.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
 
-    let data;
+    let data: any;
     try { data = JSON.parse(content); } catch { data = { country, news: [] }; }
 
-    return new Response(JSON.stringify({ ...data, date: today }), {
+    // Store in both cache layers
+    memCache.set(cacheKey, { at: Date.now(), data });
+    if (data?.news?.length) {
+      try {
+        await admin.from('country_news_cache').upsert(
+          { country, country_code: countryCode ?? null, news_date: todayIso, payload: data },
+          { onConflict: 'country,news_date' },
+        );
+      } catch (e) {
+        console.error('cache write failed', e);
+      }
+    }
+
+    return new Response(JSON.stringify({ ...data, date: today, cached: 'miss' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

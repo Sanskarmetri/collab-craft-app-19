@@ -61,6 +61,7 @@ export default function WorldMap() {
   const [geo, setGeo] = useState<any>(null);
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const geoLayerRef = useRef<L.GeoJSON | null>(null);
+  const inFlight = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     fetch(GEOJSON_URL)
@@ -71,18 +72,49 @@ export default function WorldMap() {
 
   const fetchCountry = async (name: string, code?: string) => {
     setSelectedName(name);
-    setLoading(true);
     setData(null);
+
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const cacheKey = `country-news:${name.toLowerCase()}:${todayIso}`;
+
+    // Session cache — instant re-open of a country already viewed today
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        setData(JSON.parse(cached));
+        return;
+      } catch {
+        sessionStorage.removeItem(cacheKey);
+      }
+    }
+
+    // Avoid duplicate in-flight requests for the same country
+    if (inFlight.current.has(cacheKey)) return;
+    inFlight.current.add(cacheKey);
+    setLoading(true);
     try {
       const { data: news, error } = await supabase.functions.invoke('fetch-country-news', {
         body: { country: name, countryCode: code },
       });
       if (error) throw error;
       setData(news);
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify(news));
+      } catch {
+        /* storage full — non-fatal */
+      }
     } catch (e: any) {
       console.error(e);
-      toast({ title: 'Error', description: 'Failed to load country news.', variant: 'destructive' });
+      const msg = String(e?.message || '');
+      toast({
+        title: msg.includes('429') ? 'Slow down' : 'Error',
+        description: msg.includes('429')
+          ? 'Too many requests — wait a moment before loading another country.'
+          : 'Failed to load country news.',
+        variant: 'destructive',
+      });
     } finally {
+      inFlight.current.delete(cacheKey);
       setLoading(false);
     }
   };

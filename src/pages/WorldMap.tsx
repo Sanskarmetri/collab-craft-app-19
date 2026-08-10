@@ -61,6 +61,7 @@ export default function WorldMap() {
   const [geo, setGeo] = useState<any>(null);
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const geoLayerRef = useRef<L.GeoJSON | null>(null);
+  const inFlight = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     fetch(GEOJSON_URL)

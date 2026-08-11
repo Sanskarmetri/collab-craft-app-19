@@ -27,13 +27,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Handle auth events
-        if (event === 'SIGNED_IN') {
-          toast.success('Successfully signed in!');
-          navigate('/dashboard');
-        } else if (event === 'SIGNED_OUT') {
-          navigate('/auth');
-        }
+        // Auth UI temporarily disabled — no redirects
+
       }
     );
 

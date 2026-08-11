@@ -1,4 +1,4 @@
-project_id = "jbwfwbjkjwkbotdfdavn"
+project_id = "jbwfwbjkjwkbotfdfavn"
 
 [[edge_runtime.functions]]
 name = "ai-chat"

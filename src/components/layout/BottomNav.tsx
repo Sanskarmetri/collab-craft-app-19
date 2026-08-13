@@ -1,4 +1,4 @@
-import { Home, MessageSquare, Clock, Newspaper, User } from 'lucide-react';
+import { Home, MessageSquare, Clock, Newspaper, Library, User } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -7,8 +7,10 @@ const navItems = [
   { icon: MessageSquare, label: 'Chat', path: '/chat' },
   { icon: Clock, label: 'Focus', path: '/focus' },
   { icon: Newspaper, label: 'News', path: '/news' },
+  { icon: Library, label: 'Library', path: '/resources' },
   { icon: User, label: 'Profile', path: '/profile' },
 ];
+
 
 export default function BottomNav() {
   const location = useLocation();

@@ -21,6 +21,8 @@ import Subscription from "./pages/Subscription";
 import LaunchChecklist from "./pages/LaunchChecklist";
 import News from "./pages/News";
 import WorldMap from "./pages/WorldMap";
+import Resources from "./pages/Resources";
+
 import TermsOfService from "./pages/legal/TermsOfService";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import CookiePolicy from "./pages/legal/CookiePolicy";
@@ -137,7 +139,16 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/resources"
+              element={
+                <ProtectedRoute>
+                  <Resources />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/legal/terms" element={<TermsOfService />} />
+
             <Route path="/legal/privacy" element={<PrivacyPolicy />} />
             <Route path="/legal/cookies" element={<CookiePolicy />} />
             <Route path="/legal/refund" element={<RefundPolicy />} />

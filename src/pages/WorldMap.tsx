@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, GeoJSON, LayersControl, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, LayersControl, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import AppLayout from '@/components/layout/AppLayout';
@@ -7,9 +7,33 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Globe, Loader2, Star, X, MapPin } from 'lucide-react';
+import { Globe, Star, X, MapPin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+
+/** Leaflet measures the container on creation; inside flex/grid layouts that
+ *  measurement is often stale, which leaves the interactive GeoJSON pane
+ *  offset from the tiles so clicks never hit a country. */
+function ResizeFix() {
+  const map = useMap();
+  useEffect(() => {
+    const invalidate = () => map.invalidateSize();
+    const t1 = setTimeout(invalidate, 0);
+    const t2 = setTimeout(invalidate, 300);
+    const container = map.getContainer();
+    const ro = new ResizeObserver(invalidate);
+    ro.observe(container);
+    window.addEventListener('resize', invalidate);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      ro.disconnect();
+      window.removeEventListener('resize', invalidate);
+    };
+  }, [map]);
+  return null;
+}
+
 
 // Fix default Leaflet marker icons (Vite asset issue)
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -182,7 +206,9 @@ export default function WorldMap() {
                 worldCopyJump
                 style={{ height: '100%', width: '100%' }}
               >
+                <ResizeFix />
                 <LayersControl position="topright">
+
                   <LayersControl.BaseLayer checked name="Standard">
                     <TileLayer
                       attribution='&copy; OpenStreetMap'

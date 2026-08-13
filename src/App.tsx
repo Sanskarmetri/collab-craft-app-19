@@ -139,7 +139,16 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/resources"
+              element={
+                <ProtectedRoute>
+                  <Resources />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/legal/terms" element={<TermsOfService />} />
+
             <Route path="/legal/privacy" element={<PrivacyPolicy />} />
             <Route path="/legal/cookies" element={<CookiePolicy />} />
             <Route path="/legal/refund" element={<RefundPolicy />} />

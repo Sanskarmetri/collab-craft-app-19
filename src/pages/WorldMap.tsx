@@ -206,7 +206,9 @@ export default function WorldMap() {
                 worldCopyJump
                 style={{ height: '100%', width: '100%' }}
               >
+                <ResizeFix />
                 <LayersControl position="topright">
+
                   <LayersControl.BaseLayer checked name="Standard">
                     <TileLayer
                       attribution='&copy; OpenStreetMap'

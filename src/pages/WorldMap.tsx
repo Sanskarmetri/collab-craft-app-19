@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Globe, Star, X, MapPin } from 'lucide-react';
+import { Globe, Star, X, MapPin, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -84,8 +84,12 @@ export default function WorldMap() {
   const [data, setData] = useState<CountryData | null>(null);
   const [geo, setGeo] = useState<any>(null);
   const [selectedName, setSelectedName] = useState<string | null>(null);
+  const [selectedCode, setSelectedCode] = useState<string | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
   const geoLayerRef = useRef<L.GeoJSON | null>(null);
   const inFlight = useRef<Set<string>>(new Set());
+  const activeRequest = useRef(0);
+  const FETCH_TIMEOUT_MS = 15000;
 
   useEffect(() => {
     fetch(GEOJSON_URL)
@@ -96,7 +100,9 @@ export default function WorldMap() {
 
   const fetchCountry = async (name: string, code?: string) => {
     setSelectedName(name);
+    setSelectedCode(code);
     setData(null);
+    setError(null);
 
     const todayIso = new Date().toISOString().slice(0, 10);
     const cacheKey = `country-news:${name.toLowerCase()}:${todayIso}`;
@@ -115,12 +121,27 @@ export default function WorldMap() {
     // Avoid duplicate in-flight requests for the same country
     if (inFlight.current.has(cacheKey)) return;
     inFlight.current.add(cacheKey);
+
+    const reqId = ++activeRequest.current;
     setLoading(true);
+
+    // UI timeout: if the function hasn't responded in time, show a retry button
+    // and mark this request stale so any late response is ignored.
+    const timeoutId = setTimeout(() => {
+      if (activeRequest.current !== reqId) return;
+      activeRequest.current++;
+      inFlight.current.delete(cacheKey);
+      setLoading(false);
+      setError('The request is taking too long. Click Retry to try again.');
+    }, FETCH_TIMEOUT_MS);
+
     try {
-      const { data: news, error } = await supabase.functions.invoke('fetch-country-news', {
+      const { data: news, error: invokeError } = await supabase.functions.invoke('fetch-country-news', {
         body: { country: name, countryCode: code },
       });
-      if (error) throw error;
+      clearTimeout(timeoutId);
+      if (activeRequest.current !== reqId) return;
+      if (invokeError) throw invokeError;
       setData(news);
       try {
         sessionStorage.setItem(cacheKey, JSON.stringify(news));
@@ -128,18 +149,24 @@ export default function WorldMap() {
         /* storage full — non-fatal */
       }
     } catch (e: any) {
+      clearTimeout(timeoutId);
+      if (activeRequest.current !== reqId) return;
       console.error(e);
       const msg = String(e?.message || '');
+      const description = msg.includes('429')
+        ? 'Too many requests — wait a moment before loading another country.'
+        : 'Failed to load country news.';
+      setError(description);
       toast({
         title: msg.includes('429') ? 'Slow down' : 'Error',
-        description: msg.includes('429')
-          ? 'Too many requests — wait a moment before loading another country.'
-          : 'Failed to load country news.',
+        description,
         variant: 'destructive',
       });
     } finally {
-      inFlight.current.delete(cacheKey);
-      setLoading(false);
+      if (activeRequest.current === reqId) {
+        inFlight.current.delete(cacheKey);
+        setLoading(false);
+      }
     }
   };
 
@@ -260,13 +287,45 @@ export default function WorldMap() {
 
             {loading && (
               <>
-                <Card><CardHeader><Skeleton className="h-6 w-2/3" /><Skeleton className="h-4 w-1/3 mt-2" /></CardHeader>
-                  <CardContent><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-5/6 mt-2" /></CardContent></Card>
+                <Card>
+                  <CardHeader>
+                    <Skeleton className="h-6 w-2/3" />
+                    <Skeleton className="h-4 w-1/3 mt-2" />
+                  </CardHeader>
+                  <CardContent>
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-5/6 mt-2" />
+                  </CardContent>
+                </Card>
                 {[...Array(3)].map((_, i) => (
-                  <Card key={i}><CardHeader><Skeleton className="h-5 w-3/4" /></CardHeader>
-                    <CardContent><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-2/3 mt-2" /></CardContent></Card>
+                  <Card key={i}>
+                    <CardHeader><Skeleton className="h-5 w-3/4" /></CardHeader>
+                    <CardContent>
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-2/3 mt-2" />
+                    </CardContent>
+                  </Card>
                 ))}
+                <p className="text-center text-xs text-muted-foreground animate-pulse">
+                  Fetching UPSC news for {selectedName}…
+                </p>
               </>
+            )}
+
+            {error && !loading && (
+              <Card className="border-destructive/50">
+                <CardContent className="p-6 text-center space-y-4">
+                  <AlertCircle className="h-10 w-10 mx-auto text-destructive opacity-80" />
+                  <p className="text-sm text-destructive">{error}</p>
+                  <Button
+                    onClick={() => selectedName && fetchCountry(selectedName, selectedCode)}
+                    disabled={!selectedName}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Retry
+                  </Button>
+                </CardContent>
+              </Card>
             )}
 
             {data && !loading && (
@@ -283,7 +342,7 @@ export default function WorldMap() {
                           <p className="text-xs text-muted-foreground">{data.date}</p>
                         )}
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => { setData(null); setSelectedName(null); }}>
+                      <Button variant="ghost" size="icon" onClick={() => { setData(null); setSelectedName(null); setSelectedCode(undefined); setError(null); }}>
                         <X className="h-4 w-4" />
                       </Button>
                     </div>

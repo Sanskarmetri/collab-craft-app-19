@@ -84,8 +84,12 @@ export default function WorldMap() {
   const [data, setData] = useState<CountryData | null>(null);
   const [geo, setGeo] = useState<any>(null);
   const [selectedName, setSelectedName] = useState<string | null>(null);
+  const [selectedCode, setSelectedCode] = useState<string | undefined>(undefined);
+  const [error, setError] = useState<string | null>(null);
   const geoLayerRef = useRef<L.GeoJSON | null>(null);
   const inFlight = useRef<Set<string>>(new Set());
+  const activeRequest = useRef(0);
+  const FETCH_TIMEOUT_MS = 15000;
 
   useEffect(() => {
     fetch(GEOJSON_URL)

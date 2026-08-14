@@ -125,11 +125,11 @@ export default function WorldMap() {
     const reqId = ++activeRequest.current;
     setLoading(true);
 
-    // UI timeout: if the function hasn't responded in time, show a retry button.
-    // The underlying request may still complete, but a stale guard prevents it
-    // from overwriting a newer request or the error state.
+    // UI timeout: if the function hasn't responded in time, show a retry button
+    // and mark this request stale so any late response is ignored.
     const timeoutId = setTimeout(() => {
       if (activeRequest.current !== reqId) return;
+      activeRequest.current++;
       inFlight.current.delete(cacheKey);
       setLoading(false);
       setError('The request is taking too long. Click Retry to try again.');

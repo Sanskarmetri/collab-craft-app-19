@@ -100,7 +100,9 @@ export default function WorldMap() {
 
   const fetchCountry = async (name: string, code?: string) => {
     setSelectedName(name);
+    setSelectedCode(code);
     setData(null);
+    setError(null);
 
     const todayIso = new Date().toISOString().slice(0, 10);
     const cacheKey = `country-news:${name.toLowerCase()}:${todayIso}`;
@@ -119,12 +121,27 @@ export default function WorldMap() {
     // Avoid duplicate in-flight requests for the same country
     if (inFlight.current.has(cacheKey)) return;
     inFlight.current.add(cacheKey);
+
+    const reqId = ++activeRequest.current;
     setLoading(true);
+
+    // UI timeout: if the function hasn't responded in time, show a retry button.
+    // The underlying request may still complete, but a stale guard prevents it
+    // from overwriting a newer request or the error state.
+    const timeoutId = setTimeout(() => {
+      if (activeRequest.current !== reqId) return;
+      inFlight.current.delete(cacheKey);
+      setLoading(false);
+      setError('The request is taking too long. Click Retry to try again.');
+    }, FETCH_TIMEOUT_MS);
+
     try {
-      const { data: news, error } = await supabase.functions.invoke('fetch-country-news', {
+      const { data: news, error: invokeError } = await supabase.functions.invoke('fetch-country-news', {
         body: { country: name, countryCode: code },
       });
-      if (error) throw error;
+      clearTimeout(timeoutId);
+      if (activeRequest.current !== reqId) return;
+      if (invokeError) throw invokeError;
       setData(news);
       try {
         sessionStorage.setItem(cacheKey, JSON.stringify(news));
@@ -132,18 +149,24 @@ export default function WorldMap() {
         /* storage full — non-fatal */
       }
     } catch (e: any) {
+      clearTimeout(timeoutId);
+      if (activeRequest.current !== reqId) return;
       console.error(e);
       const msg = String(e?.message || '');
+      const description = msg.includes('429')
+        ? 'Too many requests — wait a moment before loading another country.'
+        : 'Failed to load country news.';
+      setError(description);
       toast({
         title: msg.includes('429') ? 'Slow down' : 'Error',
-        description: msg.includes('429')
-          ? 'Too many requests — wait a moment before loading another country.'
-          : 'Failed to load country news.',
+        description,
         variant: 'destructive',
       });
     } finally {
-      inFlight.current.delete(cacheKey);
-      setLoading(false);
+      if (activeRequest.current === reqId) {
+        inFlight.current.delete(cacheKey);
+        setLoading(false);
+      }
     }
   };
 

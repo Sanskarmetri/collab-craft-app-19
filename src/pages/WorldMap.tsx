@@ -287,13 +287,45 @@ export default function WorldMap() {
 
             {loading && (
               <>
-                <Card><CardHeader><Skeleton className="h-6 w-2/3" /><Skeleton className="h-4 w-1/3 mt-2" /></CardHeader>
-                  <CardContent><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-5/6 mt-2" /></CardContent></Card>
+                <Card>
+                  <CardHeader>
+                    <Skeleton className="h-6 w-2/3" />
+                    <Skeleton className="h-4 w-1/3 mt-2" />
+                  </CardHeader>
+                  <CardContent>
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-5/6 mt-2" />
+                  </CardContent>
+                </Card>
                 {[...Array(3)].map((_, i) => (
-                  <Card key={i}><CardHeader><Skeleton className="h-5 w-3/4" /></CardHeader>
-                    <CardContent><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-2/3 mt-2" /></CardContent></Card>
+                  <Card key={i}>
+                    <CardHeader><Skeleton className="h-5 w-3/4" /></CardHeader>
+                    <CardContent>
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-2/3 mt-2" />
+                    </CardContent>
+                  </Card>
                 ))}
+                <p className="text-center text-xs text-muted-foreground animate-pulse">
+                  Fetching UPSC news for {selectedName}…
+                </p>
               </>
+            )}
+
+            {error && !loading && (
+              <Card className="border-destructive/50">
+                <CardContent className="p-6 text-center space-y-4">
+                  <AlertCircle className="h-10 w-10 mx-auto text-destructive opacity-80" />
+                  <p className="text-sm text-destructive">{error}</p>
+                  <Button
+                    onClick={() => selectedName && fetchCountry(selectedName, selectedCode)}
+                    disabled={!selectedName}
+                  >
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Retry
+                  </Button>
+                </CardContent>
+              </Card>
             )}
 
             {data && !loading && (

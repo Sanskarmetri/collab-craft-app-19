@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FeedbackButton } from "@/components/feedback/FeedbackButton";
 import Index from "./pages/Index";
+import Auth from "./pages/Auth";
 
 import Dashboard from "./pages/Dashboard";
 import Chat from "./pages/Chat";
@@ -41,7 +42,8 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/login" element={<Navigate to="/auth" replace />} />
 
             <Route
               path="/dashboard"

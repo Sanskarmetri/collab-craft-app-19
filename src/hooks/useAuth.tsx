@@ -27,12 +27,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Auth UI temporarily disabled — no redirects
-
+        if (event === 'SIGNED_IN' && window.location.pathname === '/auth') {
+          navigate('/dashboard', { replace: true });
+        }
+        if (event === 'SIGNED_OUT') {
+          navigate('/auth', { replace: true });
+        }
       }
     );
 
-    // THEN check for existing session
+    // THEN check for existing session (persisted in localStorage)
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);

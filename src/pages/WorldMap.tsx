@@ -370,13 +370,27 @@ export default function WorldMap() {
                           <p className="text-xs text-muted-foreground mt-1">Capital: {data.capital}</p>
                         )}
                         {data.date && (
-                          <p className="text-xs text-muted-foreground">{data.date}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {data.date}{data.updatedAt ? ` · updated ${data.updatedAt} IST` : ''}
+                          </p>
                         )}
+                        <p className="text-[11px] text-muted-foreground/80 mt-1">Refreshes automatically every hour</p>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => { setData(null); setSelectedName(null); setSelectedCode(undefined); setError(null); }}>
-                        <X className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Refresh now"
+                          onClick={() => selectedName && fetchCountry(selectedName, selectedCode, true)}
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => { setData(null); setSelectedName(null); setSelectedCode(undefined); setError(null); }}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
+
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {data.summary && <p className="text-sm">{data.summary}</p>}

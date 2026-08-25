@@ -7,7 +7,7 @@ const corsHeaders = {
 
 // In-memory cache (per edge instance) — fastest layer, survives warm invocations
 const memCache = new Map<string, { at: number; data: unknown }>();
-const MEM_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const MEM_TTL_MS = 55 * 60 * 1000; // just under an hour — news rotates hourly
 
 // Best-effort in-memory rate limit (per instance): N AI generations per caller per window
 const RL_WINDOW_MS = 60 * 1000;
@@ -37,16 +37,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    const todayIso = new Date().toISOString().slice(0, 10);
-    const today = new Date().toLocaleDateString('en-IN', {
-      day: 'numeric', month: 'long', year: 'numeric',
+    const now = new Date();
+    // Bucket by IST hour so news visibly changes every hour and every day
+    const istNow = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+    const todayIso = istNow.toISOString().slice(0, 10);
+    const hourBucket = istNow.getUTCHours();
+    const today = now.toLocaleDateString('en-IN', {
+      day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata',
     });
-    const cacheKey = `${country.toLowerCase()}|${todayIso}`;
+    const timeLabel = now.toLocaleTimeString('en-IN', {
+      hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata',
+    });
+    const cacheKey = `${country.toLowerCase()}|${todayIso}|${hourBucket}`;
 
     // 1) Memory cache
     const hit = memCache.get(cacheKey);
     if (hit && Date.now() - hit.at < MEM_TTL_MS) {
-      return new Response(JSON.stringify({ ...(hit.data as object), date: today, cached: 'memory' }), {
+      return new Response(JSON.stringify({ ...(hit.data as object), date: today, updatedAt: timeLabel, cached: 'memory' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

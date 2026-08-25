@@ -99,9 +99,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    const prompt = `You are a UPSC current affairs expert. Generate today's (${today}) latest UPSC-relevant news about ${country}${countryCode ? ` (${countryCode})` : ''}.
+    const prompt = `You are a UPSC current affairs expert. Generate the latest UPSC-relevant news about ${country}${countryCode ? ` (${countryCode})` : ''} as of ${today}, ${timeLabel} IST.
 
-Provide exactly 6 most important and recent news items (politics, economy, foreign relations with India, conflicts, science, environment). Make them realistic and contemporary as of ${today}.
+This is the ${hourBucket}:00 IST news bulletin for ${today}. Treat it as a fresh hourly update: the stories, angles and wording must differ from earlier bulletins today, reflecting developments that emerged in the last few hours.
+
+Provide exactly 6 most important and recent news items (politics, economy, foreign relations with India, conflicts, science, environment). Make them realistic and contemporary as of ${today} ${timeLabel} IST.
 
 Return ONLY a valid JSON object:
 {
@@ -110,7 +112,7 @@ Return ONLY a valid JSON object:
   "summary": "2-3 sentence overview of what's happening in ${country} right now",
   "indiaRelation": "1-2 sentences about current India-${country} relations",
   "news": [
-    { "headline": "...", "summary": "2-3 sentences", "category": "Polity|Economy|IR|Conflict|Science|Environment", "importance": "high"|"medium" }
+    { "headline": "...", "summary": "2-3 sentences", "category": "Polity|Economy|IR|Conflict|Science|Environment", "importance": "high"|"medium", "time": "approx time of day, e.g. 09:30 IST" }
   ]
 }`;
 

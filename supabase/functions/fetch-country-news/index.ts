@@ -155,15 +155,15 @@ Return ONLY a valid JSON object:
     if (data?.news?.length) {
       try {
         await admin.from('country_news_cache').upsert(
-          { country, country_code: countryCode ?? null, news_date: todayIso, payload: data },
-          { onConflict: 'country,news_date' },
+          { country, country_code: countryCode ?? null, news_date: todayIso, news_hour: hourBucket, payload: data },
+          { onConflict: 'country,news_date,news_hour' },
         );
       } catch (e) {
         console.error('cache write failed', e);
       }
     }
 
-    return new Response(JSON.stringify({ ...data, date: today, cached: 'miss' }), {
+    return new Response(JSON.stringify({ ...data, date: today, updatedAt: timeLabel, cached: 'miss' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

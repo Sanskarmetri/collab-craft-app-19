@@ -65,17 +65,18 @@ Deno.serve(async (req) => {
       { auth: { persistSession: false } },
     );
 
-    // 2) Shared DB cache
+    // 2) Shared DB cache (per country, per date, per hour)
     try {
       const { data: row } = await admin
         .from('country_news_cache')
         .select('payload')
         .eq('country', country)
         .eq('news_date', todayIso)
+        .eq('news_hour', hourBucket)
         .maybeSingle();
       if (row?.payload) {
         memCache.set(cacheKey, { at: Date.now(), data: row.payload });
-        return new Response(JSON.stringify({ ...row.payload, date: today, cached: 'db' }), {
+        return new Response(JSON.stringify({ ...row.payload, date: today, updatedAt: timeLabel, cached: 'db' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }

@@ -179,6 +179,28 @@ export default function WorldMap() {
     }
   };
 
+  // Auto-refresh: when the IST hour (or day) rolls over, reload the open country
+  const fetchRef = useRef(fetchCountry);
+  fetchRef.current = fetchCountry;
+  useEffect(() => {
+    if (!selectedName) return;
+    const currentSlot = () => {
+      const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+      return `${ist.toISOString().slice(0, 10)}:${ist.getUTCHours()}`;
+    };
+    let slot = currentSlot();
+    const id = setInterval(() => {
+      const next = currentSlot();
+      if (next !== slot) {
+        slot = next;
+        fetchRef.current(selectedName, selectedCode);
+      }
+    }, 60 * 1000);
+    return () => clearInterval(id);
+  }, [selectedName, selectedCode]);
+
+
+
   const baseStyle = {
     fillColor: 'hsl(var(--primary))',
     fillOpacity: 0.05,

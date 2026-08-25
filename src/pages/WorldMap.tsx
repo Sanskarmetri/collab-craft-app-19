@@ -411,9 +411,12 @@ export default function WorldMap() {
                         {n.importance === 'high' && <Star className="inline h-3 w-3 text-yellow-500 mr-1" />}
                         {n.headline}
                       </CardTitle>
-                      <Badge variant="outline" className={`${categoryColors[n.category] || ''} w-fit text-xs`}>
-                        {n.category}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={`${categoryColors[n.category] || ''} w-fit text-xs`}>
+                          {n.category}
+                        </Badge>
+                        {n.time && <span className="text-[11px] text-muted-foreground">{n.time}</span>}
+                      </div>
                     </CardHeader>
                     <CardContent>
                       <p className="text-xs text-muted-foreground leading-relaxed">{n.summary}</p>

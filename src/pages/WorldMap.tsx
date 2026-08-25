@@ -48,6 +48,7 @@ interface NewsItem {
   summary: string;
   category: string;
   importance: 'high' | 'medium';
+  time?: string;
 }
 
 interface CountryData {
@@ -57,6 +58,7 @@ interface CountryData {
   indiaRelation?: string;
   news: NewsItem[];
   date?: string;
+  updatedAt?: string;
 }
 
 const categoryColors: Record<string, string> = {
@@ -98,25 +100,32 @@ export default function WorldMap() {
       .catch((e) => console.error('GeoJSON load failed', e));
   }, []);
 
-  const fetchCountry = async (name: string, code?: string) => {
+  const fetchCountry = async (name: string, code?: string, force = false) => {
     setSelectedName(name);
     setSelectedCode(code);
     setData(null);
     setError(null);
 
-    const todayIso = new Date().toISOString().slice(0, 10);
-    const cacheKey = `country-news:${name.toLowerCase()}:${todayIso}`;
+    // Bucket by IST date + hour so news refreshes every hour and every day
+    const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+    const slot = `${ist.toISOString().slice(0, 10)}:${ist.getUTCHours()}`;
+    const cacheKey = `country-news:${name.toLowerCase()}:${slot}`;
 
-    // Session cache — instant re-open of a country already viewed today
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) {
-      try {
-        setData(JSON.parse(cached));
-        return;
-      } catch {
-        sessionStorage.removeItem(cacheKey);
+    // Session cache — instant re-open of a country already viewed this hour
+    if (!force) {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          setData(JSON.parse(cached));
+          return;
+        } catch {
+          sessionStorage.removeItem(cacheKey);
+        }
       }
+    } else {
+      sessionStorage.removeItem(cacheKey);
     }
+
 
     // Avoid duplicate in-flight requests for the same country
     if (inFlight.current.has(cacheKey)) return;
@@ -169,6 +178,28 @@ export default function WorldMap() {
       }
     }
   };
+
+  // Auto-refresh: when the IST hour (or day) rolls over, reload the open country
+  const fetchRef = useRef(fetchCountry);
+  fetchRef.current = fetchCountry;
+  useEffect(() => {
+    if (!selectedName) return;
+    const currentSlot = () => {
+      const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+      return `${ist.toISOString().slice(0, 10)}:${ist.getUTCHours()}`;
+    };
+    let slot = currentSlot();
+    const id = setInterval(() => {
+      const next = currentSlot();
+      if (next !== slot) {
+        slot = next;
+        fetchRef.current(selectedName, selectedCode);
+      }
+    }, 60 * 1000);
+    return () => clearInterval(id);
+  }, [selectedName, selectedCode]);
+
+
 
   const baseStyle = {
     fillColor: 'hsl(var(--primary))',
@@ -339,13 +370,27 @@ export default function WorldMap() {
                           <p className="text-xs text-muted-foreground mt-1">Capital: {data.capital}</p>
                         )}
                         {data.date && (
-                          <p className="text-xs text-muted-foreground">{data.date}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {data.date}{data.updatedAt ? ` · updated ${data.updatedAt} IST` : ''}
+                          </p>
                         )}
+                        <p className="text-[11px] text-muted-foreground/80 mt-1">Refreshes automatically every hour</p>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => { setData(null); setSelectedName(null); setSelectedCode(undefined); setError(null); }}>
-                        <X className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Refresh now"
+                          onClick={() => selectedName && fetchCountry(selectedName, selectedCode, true)}
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => { setData(null); setSelectedName(null); setSelectedCode(undefined); setError(null); }}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
+
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {data.summary && <p className="text-sm">{data.summary}</p>}
@@ -366,9 +411,12 @@ export default function WorldMap() {
                         {n.importance === 'high' && <Star className="inline h-3 w-3 text-yellow-500 mr-1" />}
                         {n.headline}
                       </CardTitle>
-                      <Badge variant="outline" className={`${categoryColors[n.category] || ''} w-fit text-xs`}>
-                        {n.category}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={`${categoryColors[n.category] || ''} w-fit text-xs`}>
+                          {n.category}
+                        </Badge>
+                        {n.time && <span className="text-[11px] text-muted-foreground">{n.time}</span>}
+                      </div>
                     </CardHeader>
                     <CardContent>
                       <p className="text-xs text-muted-foreground leading-relaxed">{n.summary}</p>

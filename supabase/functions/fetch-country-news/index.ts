@@ -7,7 +7,7 @@ const corsHeaders = {
 
 // In-memory cache (per edge instance) — fastest layer, survives warm invocations
 const memCache = new Map<string, { at: number; data: unknown }>();
-const MEM_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const MEM_TTL_MS = 55 * 60 * 1000; // just under an hour — news rotates hourly
 
 // Best-effort in-memory rate limit (per instance): N AI generations per caller per window
 const RL_WINDOW_MS = 60 * 1000;
@@ -37,16 +37,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    const todayIso = new Date().toISOString().slice(0, 10);
-    const today = new Date().toLocaleDateString('en-IN', {
-      day: 'numeric', month: 'long', year: 'numeric',
+    const now = new Date();
+    // Bucket by IST hour so news visibly changes every hour and every day
+    const istNow = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+    const todayIso = istNow.toISOString().slice(0, 10);
+    const hourBucket = istNow.getUTCHours();
+    const today = now.toLocaleDateString('en-IN', {
+      day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata',
     });
-    const cacheKey = `${country.toLowerCase()}|${todayIso}`;
+    const timeLabel = now.toLocaleTimeString('en-IN', {
+      hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata',
+    });
+    const cacheKey = `${country.toLowerCase()}|${todayIso}|${hourBucket}`;
 
     // 1) Memory cache
     const hit = memCache.get(cacheKey);
     if (hit && Date.now() - hit.at < MEM_TTL_MS) {
-      return new Response(JSON.stringify({ ...(hit.data as object), date: today, cached: 'memory' }), {
+      return new Response(JSON.stringify({ ...(hit.data as object), date: today, updatedAt: timeLabel, cached: 'memory' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -58,17 +65,18 @@ Deno.serve(async (req) => {
       { auth: { persistSession: false } },
     );
 
-    // 2) Shared DB cache
+    // 2) Shared DB cache (per country, per date, per hour)
     try {
       const { data: row } = await admin
         .from('country_news_cache')
         .select('payload')
         .eq('country', country)
         .eq('news_date', todayIso)
+        .eq('news_hour', hourBucket)
         .maybeSingle();
       if (row?.payload) {
         memCache.set(cacheKey, { at: Date.now(), data: row.payload });
-        return new Response(JSON.stringify({ ...row.payload, date: today, cached: 'db' }), {
+        return new Response(JSON.stringify({ ...row.payload, date: today, updatedAt: timeLabel, cached: 'db' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -91,9 +99,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    const prompt = `You are a UPSC current affairs expert. Generate today's (${today}) latest UPSC-relevant news about ${country}${countryCode ? ` (${countryCode})` : ''}.
+    const prompt = `You are a UPSC current affairs expert. Generate the latest UPSC-relevant news about ${country}${countryCode ? ` (${countryCode})` : ''} as of ${today}, ${timeLabel} IST.
 
-Provide exactly 6 most important and recent news items (politics, economy, foreign relations with India, conflicts, science, environment). Make them realistic and contemporary as of ${today}.
+This is the ${hourBucket}:00 IST news bulletin for ${today}. Treat it as a fresh hourly update: the stories, angles and wording must differ from earlier bulletins today, reflecting developments that emerged in the last few hours.
+
+Provide exactly 6 most important and recent news items (politics, economy, foreign relations with India, conflicts, science, environment). Make them realistic and contemporary as of ${today} ${timeLabel} IST.
 
 Return ONLY a valid JSON object:
 {
@@ -102,7 +112,7 @@ Return ONLY a valid JSON object:
   "summary": "2-3 sentence overview of what's happening in ${country} right now",
   "indiaRelation": "1-2 sentences about current India-${country} relations",
   "news": [
-    { "headline": "...", "summary": "2-3 sentences", "category": "Polity|Economy|IR|Conflict|Science|Environment", "importance": "high"|"medium" }
+    { "headline": "...", "summary": "2-3 sentences", "category": "Polity|Economy|IR|Conflict|Science|Environment", "importance": "high"|"medium", "time": "approx time of day, e.g. 09:30 IST" }
   ]
 }`;
 
@@ -111,7 +121,7 @@ Return ONLY a valid JSON object:
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'google/gemini-3-flash-preview',
-        temperature: 0.7,
+        temperature: 0.9,
         messages: [
           { role: 'system', content: 'You are a geopolitics and current affairs expert. Always return valid JSON only, no markdown.' },
           { role: 'user', content: prompt },
@@ -145,15 +155,15 @@ Return ONLY a valid JSON object:
     if (data?.news?.length) {
       try {
         await admin.from('country_news_cache').upsert(
-          { country, country_code: countryCode ?? null, news_date: todayIso, payload: data },
-          { onConflict: 'country,news_date' },
+          { country, country_code: countryCode ?? null, news_date: todayIso, news_hour: hourBucket, payload: data },
+          { onConflict: 'country,news_date,news_hour' },
         );
       } catch (e) {
         console.error('cache write failed', e);
       }
     }
 
-    return new Response(JSON.stringify({ ...data, date: today, cached: 'miss' }), {
+    return new Response(JSON.stringify({ ...data, date: today, updatedAt: timeLabel, cached: 'miss' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

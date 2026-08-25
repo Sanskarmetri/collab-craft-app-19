@@ -48,6 +48,7 @@ interface NewsItem {
   summary: string;
   category: string;
   importance: 'high' | 'medium';
+  time?: string;
 }
 
 interface CountryData {
@@ -57,6 +58,7 @@ interface CountryData {
   indiaRelation?: string;
   news: NewsItem[];
   date?: string;
+  updatedAt?: string;
 }
 
 const categoryColors: Record<string, string> = {

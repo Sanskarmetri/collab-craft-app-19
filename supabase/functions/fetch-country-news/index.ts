@@ -121,7 +121,7 @@ Return ONLY a valid JSON object:
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'google/gemini-3-flash-preview',
-        temperature: 0.7,
+        temperature: 0.9,
         messages: [
           { role: 'system', content: 'You are a geopolitics and current affairs expert. Always return valid JSON only, no markdown.' },
           { role: 'user', content: prompt },

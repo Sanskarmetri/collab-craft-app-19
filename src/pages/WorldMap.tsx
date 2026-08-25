@@ -100,25 +100,32 @@ export default function WorldMap() {
       .catch((e) => console.error('GeoJSON load failed', e));
   }, []);
 
-  const fetchCountry = async (name: string, code?: string) => {
+  const fetchCountry = async (name: string, code?: string, force = false) => {
     setSelectedName(name);
     setSelectedCode(code);
     setData(null);
     setError(null);
 
-    const todayIso = new Date().toISOString().slice(0, 10);
-    const cacheKey = `country-news:${name.toLowerCase()}:${todayIso}`;
+    // Bucket by IST date + hour so news refreshes every hour and every day
+    const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+    const slot = `${ist.toISOString().slice(0, 10)}:${ist.getUTCHours()}`;
+    const cacheKey = `country-news:${name.toLowerCase()}:${slot}`;
 
-    // Session cache — instant re-open of a country already viewed today
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) {
-      try {
-        setData(JSON.parse(cached));
-        return;
-      } catch {
-        sessionStorage.removeItem(cacheKey);
+    // Session cache — instant re-open of a country already viewed this hour
+    if (!force) {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        try {
+          setData(JSON.parse(cached));
+          return;
+        } catch {
+          sessionStorage.removeItem(cacheKey);
+        }
       }
+    } else {
+      sessionStorage.removeItem(cacheKey);
     }
+
 
     // Avoid duplicate in-flight requests for the same country
     if (inFlight.current.has(cacheKey)) return;

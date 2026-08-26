@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Send, Globe, Loader2 } from 'lucide-react';
+import { Send, Globe, Loader2, Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
@@ -60,13 +60,36 @@ const suggestedQuestions: Record<string, string[]> = {
   ],
 };
 
+const STORAGE_KEY = 'studybyself.chat.v1';
+
+const DEFAULT_MESSAGES: Message[] = [
+  { role: 'assistant', content: 'Hello! I\'m your AI tutor. Select a subject and ask me anything!' },
+];
+
+function loadStoredChat(): { messages: Message[]; subject: string; language: 'en' | 'hi' } {
+  if (typeof window === 'undefined') {
+    return { messages: DEFAULT_MESSAGES, subject: 'Current Affairs', language: 'en' };
+  }
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) throw new Error('empty');
+    const parsed = JSON.parse(raw);
+    return {
+      messages: Array.isArray(parsed.messages) && parsed.messages.length ? parsed.messages : DEFAULT_MESSAGES,
+      subject: subjects.includes(parsed.subject) ? parsed.subject : 'Current Affairs',
+      language: parsed.language === 'hi' ? 'hi' : 'en',
+    };
+  } catch {
+    return { messages: DEFAULT_MESSAGES, subject: 'Current Affairs', language: 'en' };
+  }
+}
+
 export default function Chat() {
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: 'Hello! I\'m your AI tutor. Select a subject and ask me anything!' },
-  ]);
+  const [stored] = useState(loadStoredChat);
+  const [messages, setMessages] = useState<Message[]>(stored.messages);
   const [input, setInput] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('Current Affairs');
-  const [language, setLanguage] = useState<'en' | 'hi'>('en');
+  const [selectedSubject, setSelectedSubject] = useState(stored.subject);
+  const [language, setLanguage] = useState<'en' | 'hi'>(stored.language);
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -77,6 +100,26 @@ export default function Chat() {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ messages, subject: selectedSubject, language })
+      );
+    } catch {
+      // storage full or unavailable — ignore
+    }
+  }, [messages, selectedSubject, language]);
+
+  const handleClearChat = () => {
+    setMessages(DEFAULT_MESSAGES);
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -139,14 +182,20 @@ export default function Chat() {
             <h1 className="text-3xl font-bold">AI Tutor</h1>
             <p className="text-muted-foreground">Get personalized help across all subjects</p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
-          >
-            <Globe className="mr-2 h-4 w-4" />
-            {language === 'en' ? 'English' : 'हिंदी'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
+            >
+              <Globe className="mr-2 h-4 w-4" />
+              {language === 'en' ? 'English' : 'हिंदी'}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleClearChat} disabled={isLoading}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Clear
+            </Button>
+          </div>
         </div>
 
         <Tabs value={selectedSubject} onValueChange={setSelectedSubject} className="mb-4">

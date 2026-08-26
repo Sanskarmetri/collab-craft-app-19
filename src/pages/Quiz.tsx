@@ -285,9 +285,6 @@ export default function Quiz() {
           <QuizResults 
             result={quizResult}
             onNewQuiz={handleNewQuiz}
-            onReviewAnswers={() => {
-              // TODO: Implement review mode
-            }}
           />
         </div>
       </AppLayout>

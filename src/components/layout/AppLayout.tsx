@@ -8,9 +8,9 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-[100dvh] bg-background">
       <Header />
-      <main className="container mx-auto p-4 md:p-6 pb-20 md:pb-6">
+      <main className="container mx-auto p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] md:p-6">
         {children}
       </main>
       <BottomNav />

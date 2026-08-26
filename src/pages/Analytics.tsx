@@ -9,10 +9,13 @@ import { useAchievements } from '@/hooks/useAchievements';
 import { CalendarHeatmap } from '@/components/analytics/CalendarHeatmap';
 import { AchievementCard } from '@/components/achievements/AchievementCard';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 
 export default function Analytics() {
   const [period, setPeriod] = useState<TimePeriod>('weekly');
-  const { data, loading } = useAnalytics(period);
+  const { data, loading, error, refetch } = useAnalytics(period);
   const { userAchievements, lockedAchievements } = useAchievements();
 
   const handlePeriodChange = (value: string) => {
@@ -39,6 +42,19 @@ export default function Analytics() {
             <TabsTrigger value="monthly">Monthly</TabsTrigger>
           </TabsList>
         </Tabs>
+
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Could not load analytics</AlertTitle>
+            <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+              <span>{error}</span>
+              <Button variant="outline" size="sm" onClick={refetch}>
+                <RefreshCw className="mr-2 h-4 w-4" /> Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {loading ? (
           <div className="grid gap-4 md:grid-cols-4 mb-6">

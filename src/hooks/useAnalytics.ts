@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
@@ -43,10 +43,11 @@ export function useAnalytics(period: TimePeriod = 'weekly') {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user) return;
-
-    const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
         setError(null);
@@ -63,10 +64,11 @@ export function useAnalytics(period: TimePeriod = 'weekly') {
       } finally {
         setLoading(false);
       }
-    };
+    }, [user, period]);
 
+  useEffect(() => {
     fetchAnalytics();
-  }, [user, period]);
+  }, [fetchAnalytics]);
 
-  return { data, loading, error };
+  return { data, loading, error, refetch: fetchAnalytics };
 }

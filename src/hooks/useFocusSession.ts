@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAchievements } from './useAchievements';
+import { useAuth } from './useAuth';
 
 export type SessionStatus = 'idle' | 'active' | 'paused' | 'break' | 'completed';
 
@@ -15,6 +16,7 @@ interface FocusSessionData {
 }
 
 export function useFocusSession() {
+  const { user } = useAuth();
   const { checkAchievements } = useAchievements();
   const [status, setStatus] = useState<SessionStatus>('idle');
   const [timeLeft, setTimeLeft] = useState(0);
@@ -24,6 +26,8 @@ export function useFocusSession() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [exitAttempts, setExitAttempts] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const statusRef = useRef<SessionStatus>('idle');
+  const storageKey = user ? `studybyself.focus.${user.id}` : null;
   const { toast } = useToast();
 
   const startTimer = useCallback(() => {
@@ -38,7 +42,7 @@ export function useFocusSession() {
         return prev - 1;
       });
       
-      if (status === 'active') {
+      if (statusRef.current === 'active') {
         setFocusTime((prev) => prev + 1);
       }
     }, 1000);
@@ -54,6 +58,54 @@ export function useFocusSession() {
   useEffect(() => {
     return () => stopTimer();
   }, [stopTimer]);
+
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+
+  useEffect(() => {
+    if (!storageKey) return;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as {
+        status?: SessionStatus;
+        timeLeft?: number;
+        totalDuration?: number;
+        focusTime?: number;
+        breakTime?: number;
+        sessionId?: string;
+        exitAttempts?: number;
+        savedAt?: number;
+      };
+      if (!saved.sessionId || !saved.status || saved.status === 'idle' || saved.status === 'completed') return;
+      const elapsed = saved.status === 'active' && saved.savedAt
+        ? Math.floor((Date.now() - saved.savedAt) / 1000)
+        : 0;
+      setSessionId(saved.sessionId);
+      setTotalDuration(saved.totalDuration || 0);
+      setTimeLeft(Math.max(0, (saved.timeLeft || 0) - elapsed));
+      setFocusTime((saved.focusTime || 0) + elapsed);
+      setBreakTime(saved.breakTime || 0);
+      setExitAttempts(saved.exitAttempts || 0);
+      setStatus(saved.status);
+      statusRef.current = saved.status;
+      if (saved.status === 'active' || saved.status === 'break') startTimer();
+    } catch {
+      localStorage.removeItem(storageKey);
+    }
+  }, [storageKey, startTimer]);
+
+  useEffect(() => {
+    if (!storageKey) return;
+    if (status === 'idle' || status === 'completed') {
+      localStorage.removeItem(storageKey);
+      return;
+    }
+    localStorage.setItem(storageKey, JSON.stringify({
+      status, timeLeft, totalDuration, focusTime, breakTime, sessionId, exitAttempts, savedAt: Date.now(),
+    }));
+  }, [storageKey, status, timeLeft, totalDuration, focusTime, breakTime, sessionId, exitAttempts]);
 
   useEffect(() => {
     if (timeLeft === 0 && status === 'active') {
@@ -92,6 +144,7 @@ export function useFocusSession() {
       setFocusTime(0);
       setBreakTime(0);
       setExitAttempts(0);
+      statusRef.current = 'active';
       setStatus('active');
       startTimer();
 
@@ -114,6 +167,7 @@ export function useFocusSession() {
 
   const pauseSession = useCallback(() => {
     stopTimer();
+    statusRef.current = 'paused';
     setStatus('paused');
     toast({
       title: 'Session Paused',
@@ -122,12 +176,14 @@ export function useFocusSession() {
   }, [stopTimer, toast]);
 
   const resumeSession = useCallback(() => {
+    statusRef.current = 'active';
     setStatus('active');
     startTimer();
   }, [startTimer]);
 
   const startBreak = useCallback((minutes: number) => {
     stopTimer();
+    statusRef.current = 'break';
     setStatus('break');
     setTimeLeft(minutes * 60);
     startTimer();
@@ -185,6 +241,7 @@ export function useFocusSession() {
           .from('analytics')
           .select('*')
           .eq('date', today)
+            .eq('user_id', user.id)
           .single();
 
         if (analytics) {
@@ -194,7 +251,8 @@ export function useFocusSession() {
               sessions_completed: (analytics.sessions_completed || 0) + 1,
               total_focus_minutes: (analytics.total_focus_minutes || 0) + Math.floor(focusTime / 60),
             })
-            .eq('date', today);
+              .eq('date', today)
+              .eq('user_id', user.id);
         } else {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
@@ -223,7 +281,7 @@ export function useFocusSession() {
 
     setStatus('completed');
     setSessionId(null);
-  }, [stopTimer, sessionId, focusTime, toast]);
+  }, [stopTimer, sessionId, focusTime, toast, user, checkAchievements]);
 
   const cancelSession = useCallback(async () => {
     stopTimer();
@@ -240,6 +298,7 @@ export function useFocusSession() {
     }
 
     window.postMessage({ type: 'FOCUS_END' }, '*');
+    statusRef.current = 'idle';
     setStatus('idle');
     setSessionId(null);
     setExitAttempts(0);

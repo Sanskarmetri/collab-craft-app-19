@@ -182,14 +182,20 @@ export default function Chat() {
             <h1 className="text-3xl font-bold">AI Tutor</h1>
             <p className="text-muted-foreground">Get personalized help across all subjects</p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
-          >
-            <Globe className="mr-2 h-4 w-4" />
-            {language === 'en' ? 'English' : 'हिंदी'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLanguage(language === 'en' ? 'hi' : 'en')}
+            >
+              <Globe className="mr-2 h-4 w-4" />
+              {language === 'en' ? 'English' : 'हिंदी'}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleClearChat} disabled={isLoading}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Clear
+            </Button>
+          </div>
         </div>
 
         <Tabs value={selectedSubject} onValueChange={setSelectedSubject} className="mb-4">

@@ -6,9 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Clock, Target, BookOpen, TrendingUp, Play, Brain, Calendar, Newspaper } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [stats, setStats] = useState({ streak: 0, focusMin: 0, quizzes: 0, avgScore: 0 });
   const [todaySessions, setTodaySessions] = useState<any[]>([]);
 
@@ -23,6 +25,15 @@ export default function Dashboard() {
         supabase.from('sessions').select('subject, topic, start_ts, end_ts, duration').eq('user_id', user.id).gte('start_ts', `${today}T00:00:00`).order('start_ts', { ascending: false }).limit(5),
       ]);
 
+      const requestError = profileRes.error || (analyticsRes.error?.code === 'PGRST116' ? null : analyticsRes.error) || sessionsRes.error;
+      if (requestError) {
+        toast({
+          title: 'Could not load progress',
+          description: 'Your latest study statistics are temporarily unavailable.',
+          variant: 'destructive',
+        });
+      }
+
       setStats({
         streak: profileRes.data?.streak || 0,
         focusMin: analyticsRes.data?.total_focus_minutes || 0,
@@ -33,7 +44,7 @@ export default function Dashboard() {
     };
 
     fetchStats();
-  }, [user]);
+  }, [user, toast]);
 
   return (
     <AppLayout>

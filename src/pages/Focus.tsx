@@ -18,6 +18,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useFocusSession } from '@/hooks/useFocusSession';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 
 const presets = [
   { label: '25 min', value: 25 },
@@ -33,6 +35,8 @@ const motivationalQuotes = [
 ];
 
 export default function Focus() {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [selectedPreset, setSelectedPreset] = useState(45);
   const [subject, setSubject] = useState('');
   const [topic, setTopic] = useState('');
@@ -60,16 +64,19 @@ export default function Focus() {
 
   useEffect(() => {
     const fetchTodayStats = async () => {
+      if (!user) return;
       const today = new Date().toISOString().split('T')[0];
       const { data: analytics } = await supabase
         .from('analytics')
         .select('sessions_completed, total_focus_minutes')
         .eq('date', today)
+        .eq('user_id', user.id)
         .single();
 
       const { data: profile } = await supabase
         .from('profiles')
         .select('streak')
+        .eq('id', user.id)
         .single();
 
       setTodayStats({
@@ -80,7 +87,7 @@ export default function Focus() {
     };
 
     fetchTodayStats();
-  }, [status]);
+  }, [status, user]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -92,7 +99,7 @@ export default function Focus() {
 
   const handleStart = () => {
     if (!subject || !topic) {
-      alert('Please enter subject and topic');
+      toast({ title: 'Session details required', description: 'Enter a subject and topic before starting.' });
       return;
     }
     startSession(selectedPreset, { subject: subject as any, topic, duration: selectedPreset });

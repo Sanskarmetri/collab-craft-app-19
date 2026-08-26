@@ -91,9 +91,9 @@ export async function streamChat({
             onDelta(content);
           }
         } catch {
-          // Incomplete JSON - put it back and wait for more data
-          textBuffer = line + "\n" + textBuffer;
-          break;
+          // A newline-terminated SSE event is complete. Skip malformed events so
+          // one bad payload cannot block every valid event that follows it.
+          continue;
         }
       }
     }

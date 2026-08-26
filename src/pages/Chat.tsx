@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Send, Globe, Loader2, Trash2 } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { streamChat } from '@/utils/streamChat';
@@ -61,6 +60,7 @@ const suggestedQuestions: Record<string, string[]> = {
 };
 
 const STORAGE_KEY = 'studybyself.chat.v1';
+const MAX_STORED_MESSAGES = 100;
 
 const DEFAULT_MESSAGES: Message[] = [
   { role: 'assistant', content: 'Hello! I\'m your AI tutor. Select a subject and ask me anything!' },
@@ -91,25 +91,28 @@ export default function Chat() {
   const [selectedSubject, setSelectedSubject] = useState(stored.subject);
   const [language, setLanguage] = useState<'en' | 'hi'>(stored.language);
   const [isLoading, setIsLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messageViewportRef = useRef<HTMLDivElement>(null);
+  const shouldFollowRef = useRef(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Auto-scroll to bottom when new messages arrive
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    if (!shouldFollowRef.current) return;
+    const viewport = messageViewportRef.current;
+    if (viewport) viewport.scrollTop = viewport.scrollHeight;
   }, [messages]);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ messages, subject: selectedSubject, language })
-      );
-    } catch {
-      // storage full or unavailable — ignore
-    }
+    const timer = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ messages: messages.slice(-MAX_STORED_MESSAGES), subject: selectedSubject, language })
+        );
+      } catch {
+        // storage full or unavailable — ignore
+      }
+    }, 300);
+    return () => window.clearTimeout(timer);
   }, [messages, selectedSubject, language]);
 
   const handleClearChat = () => {
@@ -210,8 +213,15 @@ export default function Chat() {
           </ScrollArea>
         </Tabs>
 
-        <Card className="mb-4 p-4 h-[calc(100vh-24rem)] overflow-hidden flex flex-col">
-          <ScrollArea className="flex-1 pr-4">
+        <Card className="mb-4 flex h-[max(20rem,calc(100dvh-24rem))] flex-col overflow-hidden p-4">
+          <div
+            ref={messageViewportRef}
+            className="flex-1 overflow-y-auto pr-4"
+            onScroll={(event) => {
+              const viewport = event.currentTarget;
+              shouldFollowRef.current = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 80;
+            }}
+          >
             <div className="space-y-4">
               {messages.map((msg, idx) => (
                 <div
@@ -236,9 +246,8 @@ export default function Chat() {
                   </div>
                 </div>
               )}
-              <div ref={scrollRef} />
             </div>
-          </ScrollArea>
+          </div>
         </Card>
 
         <div className="mb-4 flex flex-wrap gap-2">
@@ -259,7 +268,7 @@ export default function Chat() {
             placeholder={`Ask about ${selectedSubject}...`}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSend()}
+            onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleSend()}
             disabled={isLoading}
           />
           <Button onClick={handleSend} disabled={isLoading}>

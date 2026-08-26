@@ -9,10 +9,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 interface QuizResultsProps {
   result: QuizResult;
   onNewQuiz: () => void;
-  onReviewAnswers: () => void;
 }
 
-export default function QuizResults({ result, onNewQuiz, onReviewAnswers }: QuizResultsProps) {
+export default function QuizResults({ result, onNewQuiz }: QuizResultsProps) {
   const getScoreColor = (score: number) => {
     if (score >= 75) return 'text-accent';
     if (score >= 50) return 'text-yellow-500';
@@ -219,12 +218,9 @@ export default function QuizResults({ result, onNewQuiz, onReviewAnswers }: Quiz
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex gap-3">
-        <Button onClick={onNewQuiz} className="flex-1">
+      <div>
+        <Button onClick={onNewQuiz} className="w-full">
           Take Another Quiz
-        </Button>
-        <Button onClick={onReviewAnswers} variant="outline" className="flex-1">
-          Review Answers
         </Button>
       </div>
     </div>

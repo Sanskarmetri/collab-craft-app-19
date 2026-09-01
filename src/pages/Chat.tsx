@@ -92,8 +92,11 @@ export default function Chat() {
   const [selectedSubject, setSelectedSubject] = useState(stored.subject);
   const [language, setLanguage] = useState<'en' | 'hi'>(stored.language);
   const [isLoading, setIsLoading] = useState(false);
+  const [streamError, setStreamError] = useState<string | null>(null);
   const messageViewportRef = useRef<HTMLDivElement>(null);
   const shouldFollowRef = useRef(true);
+  const abortRef = useRef<AbortController | null>(null);
+  const lastPromptRef = useRef<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -101,6 +104,15 @@ export default function Chat() {
     const viewport = messageViewportRef.current;
     if (viewport) viewport.scrollTop = viewport.scrollHeight;
   }, [messages]);
+
+  // Cancel any in-flight stream when leaving the section so a late
+  // response can't write into an unmounted view.
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      abortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -117,6 +129,10 @@ export default function Chat() {
   }, [messages, selectedSubject, language]);
 
   const handleClearChat = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setIsLoading(false);
+    setStreamError(null);
     setMessages(DEFAULT_MESSAGES);
     try {
       window.localStorage.removeItem(STORAGE_KEY);
@@ -124,6 +140,7 @@ export default function Chat() {
       // ignore
     }
   };
+
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;

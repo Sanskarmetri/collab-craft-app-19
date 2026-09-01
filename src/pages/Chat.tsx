@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Send, Globe, Loader2, Trash2 } from 'lucide-react';
+import { Send, Globe, Loader2, Trash2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/components/ui/use-toast';
@@ -298,6 +298,20 @@ export default function Chat() {
             </div>
           </div>
         </Card>
+
+        {streamError && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+            <div className="flex items-center gap-2 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              <span>{streamError}</span>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleRetry} disabled={isLoading}>
+              <RefreshCw className="mr-2 h-4 w-4" /> Retry
+            </Button>
+          </div>
+        )}
+
+
 
         <div className="mb-4 flex flex-wrap gap-2">
           {suggestedQuestions[selectedSubject]?.map(question => (

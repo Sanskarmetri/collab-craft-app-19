@@ -1,6 +1,8 @@
 import { Home, MessageSquare, Clock, Newspaper, Library, User } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useNavLock } from '@/hooks/useNavLock';
+
 
 const navItems = [
   { icon: Home, label: 'Home', path: '/dashboard' },

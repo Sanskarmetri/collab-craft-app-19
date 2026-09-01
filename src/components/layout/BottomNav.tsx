@@ -1,6 +1,8 @@
 import { Home, MessageSquare, Clock, Newspaper, Library, User } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useNavLock } from '@/hooks/useNavLock';
+
 
 const navItems = [
   { icon: Home, label: 'Home', path: '/dashboard' },
@@ -14,6 +16,7 @@ const navItems = [
 
 export default function BottomNav() {
   const location = useLocation();
+  const shouldBlockNav = useNavLock();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur md:hidden pb-[env(safe-area-inset-bottom)]">
@@ -25,8 +28,9 @@ export default function BottomNav() {
               key={path}
               to={path}
               onClick={(event) => {
-                if (isActive) event.preventDefault();
+                if (isActive || shouldBlockNav()) event.preventDefault();
               }}
+
               aria-current={isActive ? 'page' : undefined}
               className={cn(
                 'flex min-w-0 flex-col items-center justify-center gap-1 transition-colors',

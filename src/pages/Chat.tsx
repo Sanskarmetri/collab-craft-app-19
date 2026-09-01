@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Send, Globe, Loader2, Trash2 } from 'lucide-react';
+import { Send, Globe, Loader2, Trash2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/components/ui/use-toast';
@@ -92,8 +92,11 @@ export default function Chat() {
   const [selectedSubject, setSelectedSubject] = useState(stored.subject);
   const [language, setLanguage] = useState<'en' | 'hi'>(stored.language);
   const [isLoading, setIsLoading] = useState(false);
+  const [streamError, setStreamError] = useState<string | null>(null);
   const messageViewportRef = useRef<HTMLDivElement>(null);
   const shouldFollowRef = useRef(true);
+  const abortRef = useRef<AbortController | null>(null);
+  const lastPromptRef = useRef<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -101,6 +104,15 @@ export default function Chat() {
     const viewport = messageViewportRef.current;
     if (viewport) viewport.scrollTop = viewport.scrollHeight;
   }, [messages]);
+
+  // Cancel any in-flight stream when leaving the section so a late
+  // response can't write into an unmounted view.
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      abortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -117,6 +129,10 @@ export default function Chat() {
   }, [messages, selectedSubject, language]);
 
   const handleClearChat = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setIsLoading(false);
+    setStreamError(null);
     setMessages(DEFAULT_MESSAGES);
     try {
       window.localStorage.removeItem(STORAGE_KEY);
@@ -125,22 +141,27 @@ export default function Chat() {
     }
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
 
-    const userMessage: Message = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
+  const runStream = async (history: Message[], prompt: string) => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    lastPromptRef.current = prompt;
+
+    setStreamError(null);
     setIsLoading(true);
 
     let assistantContent = '';
+    const isStale = () => abortRef.current !== controller;
 
     try {
       await streamChat({
-        messages: [...messages, userMessage],
+        messages: history,
         subject: selectedSubject,
         language,
+        signal: controller.signal,
         onDelta: (chunk) => {
+          if (isStale()) return;
           assistantContent += chunk;
           setMessages(prev => {
             const lastMsg = prev[prev.length - 1];
@@ -153,10 +174,15 @@ export default function Chat() {
           });
         },
         onDone: () => {
+          if (isStale()) return;
           setIsLoading(false);
+          abortRef.current = null;
         },
         onError: (error) => {
+          if (isStale()) return;
           setIsLoading(false);
+          abortRef.current = null;
+          setStreamError(error.message || 'The AI tutor could not respond.');
           toast({
             title: "Error",
             description: error.message,
@@ -173,10 +199,32 @@ export default function Chat() {
         },
       });
     } catch (error) {
+      if (isStale()) return;
       setIsLoading(false);
+      abortRef.current = null;
+      setStreamError(error instanceof Error ? error.message : 'Unexpected chat error.');
       console.error('Chat error:', error);
     }
   };
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: Message = { role: 'user', content: input };
+    const history = [...messages, userMessage];
+    setMessages(history);
+    setInput('');
+    await runStream(history, userMessage.content);
+  };
+
+  const handleRetry = async () => {
+    if (isLoading) return;
+    const history = messages.filter(
+      (m, i) => !(i === messages.length - 1 && m.role === 'assistant' && !m.content.trim())
+    );
+    await runStream(history, lastPromptRef.current ?? '');
+  };
+
 
   return (
     <AppLayout>
@@ -250,6 +298,20 @@ export default function Chat() {
             </div>
           </div>
         </Card>
+
+        {streamError && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+            <div className="flex items-center gap-2 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              <span>{streamError}</span>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleRetry} disabled={isLoading}>
+              <RefreshCw className="mr-2 h-4 w-4" /> Retry
+            </Button>
+          </div>
+        )}
+
+
 
         <div className="mb-4 flex flex-wrap gap-2">
           {suggestedQuestions[selectedSubject]?.map(question => (

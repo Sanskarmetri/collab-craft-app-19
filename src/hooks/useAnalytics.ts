@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
@@ -42,12 +42,24 @@ export function useAnalytics(period: TimePeriod = 'weekly') {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const fetchAnalytics = useCallback(async () => {
       if (!user) {
         setLoading(false);
         return;
       }
+      const requestId = ++requestIdRef.current;
+      const isStale = () => !mountedRef.current || requestId !== requestIdRef.current;
+
       try {
         setLoading(true);
         setError(null);
@@ -56,13 +68,15 @@ export function useAnalytics(period: TimePeriod = 'weekly') {
           body: { period }
         });
 
+        if (isStale()) return;
         if (functionError) throw functionError;
         setData(analyticsData);
       } catch (err) {
+        if (isStale()) return;
         console.error('Error fetching analytics:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch analytics');
       } finally {
-        setLoading(false);
+        if (!isStale()) setLoading(false);
       }
     }, [user, period]);
 

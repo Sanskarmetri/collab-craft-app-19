@@ -4,6 +4,7 @@ interface StreamChatOptions {
   messages: Message[];
   subject: string;
   language: string;
+  signal?: AbortSignal;
   onDelta: (deltaText: string) => void;
   onDone: () => void;
   onError: (error: Error) => void;
@@ -13,6 +14,7 @@ export async function streamChat({
   messages,
   subject,
   language,
+  signal,
   onDelta,
   onDone,
   onError,
@@ -34,8 +36,10 @@ export async function streamChat({
         "Content-Type": "application/json",
         Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
       },
+      signal,
       body: JSON.stringify({ messages, subject, language }),
     });
+
 
     if (!resp.ok) {
       if (resp.status === 401) {
@@ -119,6 +123,11 @@ export async function streamChat({
 
     onDone();
   } catch (error) {
+    if ((error as Error)?.name === "AbortError" || signal?.aborted) {
+      // Stale request cancelled by the UI — not a user-facing failure.
+      return;
+    }
     onError(error instanceof Error ? error : new Error("Unknown error"));
   }
 }
+

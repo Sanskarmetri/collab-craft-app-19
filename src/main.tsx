@@ -1,6 +1,9 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { installGlobalErrorLogging } from "./lib/errorLog";
+
+installGlobalErrorLogging();
 
 // Guard: unregister service workers in iframe/preview contexts
 const isInIframe = (() => {

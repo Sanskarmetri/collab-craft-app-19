@@ -142,22 +142,26 @@ export default function Chat() {
   };
 
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const runStream = async (history: Message[], prompt: string) => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    lastPromptRef.current = prompt;
 
-    const userMessage: Message = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
+    setStreamError(null);
     setIsLoading(true);
 
     let assistantContent = '';
+    const isStale = () => abortRef.current !== controller;
 
     try {
       await streamChat({
-        messages: [...messages, userMessage],
+        messages: history,
         subject: selectedSubject,
         language,
+        signal: controller.signal,
         onDelta: (chunk) => {
+          if (isStale()) return;
           assistantContent += chunk;
           setMessages(prev => {
             const lastMsg = prev[prev.length - 1];
@@ -170,10 +174,15 @@ export default function Chat() {
           });
         },
         onDone: () => {
+          if (isStale()) return;
           setIsLoading(false);
+          abortRef.current = null;
         },
         onError: (error) => {
+          if (isStale()) return;
           setIsLoading(false);
+          abortRef.current = null;
+          setStreamError(error.message || 'The AI tutor could not respond.');
           toast({
             title: "Error",
             description: error.message,
@@ -190,10 +199,32 @@ export default function Chat() {
         },
       });
     } catch (error) {
+      if (isStale()) return;
       setIsLoading(false);
+      abortRef.current = null;
+      setStreamError(error instanceof Error ? error.message : 'Unexpected chat error.');
       console.error('Chat error:', error);
     }
   };
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: Message = { role: 'user', content: input };
+    const history = [...messages, userMessage];
+    setMessages(history);
+    setInput('');
+    await runStream(history, userMessage.content);
+  };
+
+  const handleRetry = async () => {
+    if (isLoading) return;
+    const history = messages.filter(
+      (m, i) => !(i === messages.length - 1 && m.role === 'assistant' && !m.content.trim())
+    );
+    await runStream(history, lastPromptRef.current ?? '');
+  };
+
 
   return (
     <AppLayout>

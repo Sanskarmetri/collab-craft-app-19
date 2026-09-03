@@ -157,24 +157,41 @@ export default function Resources() {
               )}
 
               {!loading &&
-                items.map((item, i) => (
-                  <Card key={i}>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base leading-snug">{item.title}</CardTitle>
-                      {item.meta && <p className="text-xs text-muted-foreground">{item.meta}</p>}
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {item.body && <p className="text-sm text-muted-foreground leading-relaxed">{item.body}</p>}
-                      {!!item.tags?.length && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {item.tags.map((t, j) => (
-                            <Badge key={j} variant="secondary" className="text-xs">{t}</Badge>
-                          ))}
+                items.map((item, i) => {
+                  const isCovered = covered.has(progressKey(key, subject, item.title));
+                  return (
+                    <Card key={i} className={isCovered ? 'border-primary/50' : undefined}>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <CardTitle className="text-base leading-snug">{item.title}</CardTitle>
+                            {item.meta && <p className="text-xs text-muted-foreground">{item.meta}</p>}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant={isCovered ? 'default' : 'outline'}
+                            className="shrink-0 gap-1.5"
+                            onClick={() => toggleCovered(key, item.title)}
+                          >
+                            <Check className="h-4 w-4" />
+                            {isCovered ? 'Covered' : 'Mark covered'}
+                          </Button>
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {item.body && <p className="text-sm text-muted-foreground leading-relaxed">{item.body}</p>}
+                        {!!item.tags?.length && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {item.tags.map((t, j) => (
+                              <Badge key={j} variant="secondary" className="text-xs">{t}</Badge>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+
             </TabsContent>
           ))}
         </Tabs>

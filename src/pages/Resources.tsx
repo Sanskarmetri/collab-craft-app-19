@@ -6,9 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { FileQuestion, BookOpen, TrendingUp, Loader2, Library } from 'lucide-react';
+import { FileQuestion, BookOpen, TrendingUp, Loader2, Library, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useResourceProgress, progressKey, type ResourceType } from '@/hooks/useResourceProgress';
+
 
 interface ResourceItem {
   title: string;

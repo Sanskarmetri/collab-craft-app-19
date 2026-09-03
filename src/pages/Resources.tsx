@@ -54,6 +54,17 @@ export default function Resources() {
   const [extra, setExtra] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Record<TabKey, ResourceItem[]>>({ pyq: [], ncert: [], improve: [] });
+  const { covered, toggle, isAuthed } = useResourceProgress();
+
+  const toggleCovered = async (type: TabKey, title: string) => {
+    if (!isAuthed) {
+      toast({ title: 'Sign in required', description: 'Log in to track your coverage.', variant: 'destructive' });
+      return;
+    }
+    await toggle(type as ResourceType, subject, title);
+  };
+
+
 
   const load = async (type: TabKey) => {
     setLoading(true);

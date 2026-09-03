@@ -408,6 +408,33 @@ export type Database = {
           },
         ]
       }
+      resource_progress: {
+        Row: {
+          created_at: string
+          id: string
+          resource_type: string
+          subject: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          resource_type: string
+          subject: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          resource_type?: string
+          subject?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       sessions: {
         Row: {
           created_at: string

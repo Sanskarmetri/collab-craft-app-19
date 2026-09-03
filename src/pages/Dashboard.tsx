@@ -16,6 +16,8 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [stats, setStats] = useState({ streak: 0, focusMin: 0, quizzes: 0, avgScore: 0 });
   const [todaySessions, setTodaySessions] = useState<any[]>([]);
+  const { counts: coverage, bySubject, rows: coverageRows } = useResourceProgress();
+
 
   useEffect(() => {
     if (!user) return;

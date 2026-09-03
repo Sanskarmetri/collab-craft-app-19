@@ -3,16 +3,21 @@ import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, Target, BookOpen, TrendingUp, Play, Brain, Calendar, Newspaper } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Clock, Target, BookOpen, TrendingUp, Play, Brain, Calendar, Newspaper, Library } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useResourceProgress } from '@/hooks/useResourceProgress';
+
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [stats, setStats] = useState({ streak: 0, focusMin: 0, quizzes: 0, avgScore: 0 });
   const [todaySessions, setTodaySessions] = useState<any[]>([]);
+  const { counts: coverage, bySubject, rows: coverageRows } = useResourceProgress();
+
 
   useEffect(() => {
     if (!user) return;
@@ -109,6 +114,53 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+
+        <Card className="mt-8">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Library className="h-5 w-5 text-primary" />
+                Study Coverage
+              </CardTitle>
+              <CardDescription>Items you've marked as covered in the Study Library</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/resources">Open Library</Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-3">
+              {[
+                { label: 'PYQs solved', value: coverage.pyq },
+                { label: 'NCERT chapters read', value: coverage.ncert },
+                { label: 'Techniques applied', value: coverage.improve },
+              ].map((c) => (
+                <div key={c.label} className="rounded-lg border p-4">
+                  <div className="text-2xl font-bold">{c.value}</div>
+                  <p className="text-xs text-muted-foreground">{c.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {coverageRows.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(bySubject)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([subj, n]) => (
+                    <Badge key={subj} variant="secondary" className="text-xs">
+                      {subj} · {n}
+                    </Badge>
+                  ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Nothing marked yet — open the Study Library and tap "Mark covered" on any PYQ, NCERT chapter or technique.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+
 
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           <Card>

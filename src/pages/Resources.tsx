@@ -6,9 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { FileQuestion, BookOpen, TrendingUp, Loader2, Library } from 'lucide-react';
+import { FileQuestion, BookOpen, TrendingUp, Loader2, Library, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useResourceProgress, progressKey, type ResourceType } from '@/hooks/useResourceProgress';
+
 
 interface ResourceItem {
   title: string;
@@ -52,6 +54,17 @@ export default function Resources() {
   const [extra, setExtra] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Record<TabKey, ResourceItem[]>>({ pyq: [], ncert: [], improve: [] });
+  const { covered, toggle, isAuthed } = useResourceProgress();
+
+  const toggleCovered = async (type: TabKey, title: string) => {
+    if (!isAuthed) {
+      toast({ title: 'Sign in required', description: 'Log in to track your coverage.', variant: 'destructive' });
+      return;
+    }
+    await toggle(type as ResourceType, subject, title);
+  };
+
+
 
   const load = async (type: TabKey) => {
     setLoading(true);
@@ -157,24 +170,41 @@ export default function Resources() {
               )}
 
               {!loading &&
-                items.map((item, i) => (
-                  <Card key={i}>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base leading-snug">{item.title}</CardTitle>
-                      {item.meta && <p className="text-xs text-muted-foreground">{item.meta}</p>}
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      {item.body && <p className="text-sm text-muted-foreground leading-relaxed">{item.body}</p>}
-                      {!!item.tags?.length && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {item.tags.map((t, j) => (
-                            <Badge key={j} variant="secondary" className="text-xs">{t}</Badge>
-                          ))}
+                items.map((item, i) => {
+                  const isCovered = covered.has(progressKey(key, subject, item.title));
+                  return (
+                    <Card key={i} className={isCovered ? 'border-primary/50' : undefined}>
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <CardTitle className="text-base leading-snug">{item.title}</CardTitle>
+                            {item.meta && <p className="text-xs text-muted-foreground">{item.meta}</p>}
+                          </div>
+                          <Button
+                            size="sm"
+                            variant={isCovered ? 'default' : 'outline'}
+                            className="shrink-0 gap-1.5"
+                            onClick={() => toggleCovered(key, item.title)}
+                          >
+                            <Check className="h-4 w-4" />
+                            {isCovered ? 'Covered' : 'Mark covered'}
+                          </Button>
                         </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        {item.body && <p className="text-sm text-muted-foreground leading-relaxed">{item.body}</p>}
+                        {!!item.tags?.length && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {item.tags.map((t, j) => (
+                              <Badge key={j} variant="secondary" className="text-xs">{t}</Badge>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+
             </TabsContent>
           ))}
         </Tabs>

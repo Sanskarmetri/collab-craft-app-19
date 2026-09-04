@@ -124,9 +124,14 @@ export default function Dashboard() {
               </CardTitle>
               <CardDescription>Items you've marked as covered in the Study Library</CardDescription>
             </div>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/resources">Open Library</Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/syllabus">Syllabus map</Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/resources">Open Library</Link>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-3">

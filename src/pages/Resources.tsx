@@ -15,7 +15,7 @@ import {
   Library,
   Check,
   ExternalLink,
-  Map,
+  Map as MapIcon,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -137,7 +137,7 @@ export default function Resources() {
             <Badge variant="secondary">{counts.improve} techniques</Badge>
             <Button variant="outline" size="sm" asChild>
               <Link to="/syllabus" className="gap-1.5">
-                <Map className="h-4 w-4" />
+                <MapIcon className="h-4 w-4" />
                 Syllabus map
               </Link>
             </Button>

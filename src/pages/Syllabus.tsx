@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, Check, Library, Map } from 'lucide-react';
+import { ArrowLeft, Check, Library, Map as MapIcon } from 'lucide-react';
 import { SYLLABUS, type SyllabusSubject } from '@/data/syllabus';
 import { useResourceProgress, progressKey } from '@/hooks/useResourceProgress';
 import { useToast } from '@/hooks/use-toast';
@@ -51,7 +51,7 @@ export default function Syllabus() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
-              <Map className="h-8 w-8 text-primary" />
+              <MapIcon className="h-8 w-8 text-primary" />
               Syllabus Map
             </h1>
             <p className="mt-1 text-muted-foreground">

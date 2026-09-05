@@ -225,6 +225,12 @@ export default function Dashboard() {
                 </Link>
               </Button>
               <Button className="w-full" variant="outline" asChild>
+                <Link to="/planner">
+                  <CalendarClock className="mr-2 h-4 w-4" />
+                  Countdown & Notes
+                </Link>
+              </Button>
+              <Button className="w-full" variant="outline" asChild>
                 <Link to="/news">
                   <Newspaper className="mr-2 h-4 w-4" />
                   UPSC Daily News

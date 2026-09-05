@@ -25,6 +25,7 @@ import News from "./pages/News";
 import WorldMap from "./pages/WorldMap";
 import Resources from "./pages/Resources";
 import Syllabus from "./pages/Syllabus";
+import Planner from "./pages/Planner";
 
 import TermsOfService from "./pages/legal/TermsOfService";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
@@ -157,6 +158,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Syllabus />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/planner"
+              element={
+                <ProtectedRoute>
+                  <Planner />
                 </ProtectedRoute>
               }
             />

@@ -4,7 +4,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Target, BookOpen, TrendingUp, Play, Brain, Calendar, Newspaper, Library } from 'lucide-react';
+import { Clock, Target, BookOpen, TrendingUp, Play, Brain, Calendar, Newspaper, Library, CalendarClock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -222,6 +222,12 @@ export default function Dashboard() {
                 <Link to="/timetable">
                   <Calendar className="mr-2 h-4 w-4" />
                   View Timetable
+                </Link>
+              </Button>
+              <Button className="w-full" variant="outline" asChild>
+                <Link to="/planner">
+                  <CalendarClock className="mr-2 h-4 w-4" />
+                  Countdown & Notes
                 </Link>
               </Button>
               <Button className="w-full" variant="outline" asChild>

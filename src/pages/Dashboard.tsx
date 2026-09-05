@@ -4,7 +4,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Target, BookOpen, TrendingUp, Play, Brain, Calendar, Newspaper, Library } from 'lucide-react';
+import { Clock, Target, BookOpen, TrendingUp, Play, Brain, Calendar, Newspaper, Library, CalendarClock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';

@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Bell, BellRing, CalendarClock, Plus, Timer, Trash2 } from 'lucide-react';
 
 type Task = {
@@ -15,9 +18,6 @@ type Task = {
   remindAt?: string; // ISO string
   notified?: boolean;
 };
-
-const TARGET_KEY = 'studybyself.planner.target.v1';
-const TASKS_KEY = 'studybyself.planner.tasks.v1';
 
 const toLocalInput = (d: Date) => {
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -31,16 +31,6 @@ const defaultTarget = () => {
   d.setDate(d.getDate() + 1);
   d.setHours(9, 0, 0, 0);
   return toLocalInput(d);
-};
-
-const readTasks = (): Task[] => {
-  try {
-    const raw = localStorage.getItem(TASKS_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
 };
 
 function Digit({ value, label }: { value: number; label: string }) {
@@ -61,11 +51,11 @@ function Digit({ value, label }: { value: number; label: string }) {
 
 export default function Planner() {
   const { toast } = useToast();
-  const [target, setTarget] = useState<string>(
-    () => localStorage.getItem(TARGET_KEY) || defaultTarget(),
-  );
+  const { user } = useAuth();
+  const [target, setTarget] = useState<string>(defaultTarget());
   const [now, setNow] = useState(() => Date.now());
-  const [tasks, setTasks] = useState<Task[]>(() => readTasks());
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
   const [newTask, setNewTask] = useState('');
   const [newRemind, setNewRemind] = useState('');
   const reachedRef = useRef(false);
@@ -75,14 +65,71 @@ export default function Planner() {
     return () => window.clearInterval(id);
   }, []);
 
+  // Load from database
   useEffect(() => {
-    localStorage.setItem(TARGET_KEY, target);
-    reachedRef.current = false;
-  }, [target]);
+    let active = true;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    (async () => {
+      const [settingsRes, tasksRes] = await Promise.all([
+        supabase.from('planner_settings').select('target_at').eq('user_id', user.id).maybeSingle(),
+        supabase
+          .from('planner_tasks')
+          .select('id, title, done, remind_at, notified')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
+      ]);
+      if (!active) return;
+      if (settingsRes.data?.target_at) {
+        setTarget(toLocalInput(new Date(settingsRes.data.target_at)));
+      }
+      if (tasksRes.data) {
+        setTasks(
+          tasksRes.data.map((t) => ({
+            id: t.id,
+            title: t.title,
+            done: t.done,
+            remindAt: t.remind_at ?? undefined,
+            notified: t.notified,
+          })),
+        );
+      }
+      if (settingsRes.error || tasksRes.error) {
+        toast({
+          title: "Couldn't load your planner",
+          description: 'Please check your connection and try again.',
+          variant: 'destructive',
+        });
+      }
+      setLoading(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [user, toast]);
 
-  useEffect(() => {
-    localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
-  }, [tasks]);
+  const saveTarget = useCallback(
+    async (value: string) => {
+      setTarget(value);
+      reachedRef.current = false;
+      const ms = new Date(value).getTime();
+      if (!user || Number.isNaN(ms)) return;
+      const { error } = await supabase
+        .from('planner_settings')
+        .upsert({ user_id: user.id, target_at: new Date(ms).toISOString() }, { onConflict: 'user_id' });
+      if (error) {
+        toast({
+          title: "Couldn't save your countdown",
+          description: 'It will not sync to your other devices yet.',
+          variant: 'destructive',
+        });
+      }
+    },
+    [user, toast],
+  );
 
   const targetMs = useMemo(() => {
     const t = new Date(target).getTime();
@@ -121,26 +168,69 @@ export default function Planner() {
         }
       }
     });
-    const ids = new Set(due.map((d) => d.id));
-    setTasks((prev) => prev.map((t) => (ids.has(t.id) ? { ...t, notified: true } : t)));
-  }, [now, tasks, toast]);
+    const ids = due.map((d) => d.id);
+    const idSet = new Set(ids);
+    setTasks((prev) => prev.map((t) => (idSet.has(t.id) ? { ...t, notified: true } : t)));
+    if (user) {
+      supabase
+        .from('planner_tasks')
+        .update({ notified: true })
+        .in('id', ids)
+        .then(() => undefined);
+    }
+  }, [now, tasks, toast, user]);
 
-  const addTask = () => {
+  const addTask = async () => {
     const title = newTask.trim();
-    if (!title) return;
-    setTasks((prev) => [
-      {
-        id: crypto.randomUUID(),
-        title,
-        done: false,
-        remindAt: newRemind ? new Date(newRemind).toISOString() : undefined,
-      },
-      ...prev,
-    ]);
+    if (!title || !user) return;
+    const remindAt = newRemind ? new Date(newRemind).toISOString() : null;
     setNewTask('');
     setNewRemind('');
     if (newRemind && 'Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().catch(() => undefined);
+    }
+    const { data, error } = await supabase
+      .from('planner_tasks')
+      .insert({ user_id: user.id, title, remind_at: remindAt })
+      .select('id, title, done, remind_at, notified')
+      .single();
+    if (error || !data) {
+      toast({
+        title: "Couldn't add your task",
+        description: 'Please try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setTasks((prev) => [
+      {
+        id: data.id,
+        title: data.title,
+        done: data.done,
+        remindAt: data.remind_at ?? undefined,
+        notified: data.notified,
+      },
+      ...prev,
+    ]);
+  };
+
+  const toggleTask = async (id: string, done: boolean) => {
+    const prevTasks = tasks;
+    setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, done } : x)));
+    const { error } = await supabase.from('planner_tasks').update({ done }).eq('id', id);
+    if (error) {
+      setTasks(prevTasks);
+      toast({ title: "Couldn't update your task", variant: 'destructive' });
+    }
+  };
+
+  const deleteTask = async (id: string) => {
+    const prevTasks = tasks;
+    setTasks((prev) => prev.filter((x) => x.id !== id));
+    const { error } = await supabase.from('planner_tasks').delete().eq('id', id);
+    if (error) {
+      setTasks(prevTasks);
+      toast({ title: "Couldn't delete your task", variant: 'destructive' });
     }
   };
 
@@ -162,7 +252,7 @@ export default function Planner() {
           </h1>
           <p className="mt-1 text-muted-foreground">
             Set the day and time you're counting down to, and keep your to-do list with reminders in
-            one place.
+            one place. Everything is saved to your account and follows you across devices.
           </p>
         </div>
 
@@ -179,7 +269,7 @@ export default function Planner() {
               <Input
                 type="datetime-local"
                 value={target}
-                onChange={(e) => setTarget(e.target.value)}
+                onChange={(e) => saveTarget(e.target.value)}
                 className="w-full max-w-[240px]"
                 aria-label="Target date and time"
               />
@@ -242,7 +332,13 @@ export default function Planner() {
               </Button>
             </div>
 
-            {tasks.length === 0 ? (
+            {loading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-14 w-full" />
+              </div>
+            ) : tasks.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
                 Nothing here yet. Add your first task above.
               </p>
@@ -255,11 +351,7 @@ export default function Planner() {
                   >
                     <Checkbox
                       checked={t.done}
-                      onCheckedChange={(v) =>
-                        setTasks((prev) =>
-                          prev.map((x) => (x.id === t.id ? { ...x, done: Boolean(v) } : x)),
-                        )
-                      }
+                      onCheckedChange={(v) => toggleTask(t.id, Boolean(v))}
                       className="mt-1"
                       aria-label={`Mark ${t.title} done`}
                     />
@@ -290,7 +382,7 @@ export default function Planner() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setTasks((prev) => prev.filter((x) => x.id !== t.id))}
+                      onClick={() => deleteTask(t.id)}
                       aria-label="Delete task"
                     >
                       <Trash2 className="h-4 w-4" />

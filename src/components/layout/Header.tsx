@@ -25,7 +25,7 @@ export default function Header() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link to="/dashboard" onClick={guardNav('/dashboard')} className="flex items-center space-x-2">
           <BookOpen className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold">Studybyself</h1>
+          <h1 className="font-serif text-2xl italic tracking-tight">Studybyself</h1>
         </Link>
 
         <div className="flex items-center space-x-2">

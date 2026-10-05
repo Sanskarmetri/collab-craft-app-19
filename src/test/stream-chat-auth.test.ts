@@ -42,6 +42,12 @@ function errorResponse(status: number) {
   return { ok: false, status, json: async () => ({}) };
 }
 
+function mockFetch(impl: (url: string, init: RequestInit) => unknown) {
+  const fetchMock = vi.fn(async (url: string, init: RequestInit) => impl(url, init));
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
 function baseArgs(overrides: Record<string, unknown> = {}) {
   return {
     messages: [{ role: "user" as const, content: "Explain Article 370" }],
@@ -78,8 +84,7 @@ describe("AI Tutor streaming auth", () => {
 
   it("sends the signed-in user's access token as the bearer, not the publishable key", async () => {
     getSession.mockResolvedValue(signedInSession());
-    const fetchMock = vi.fn(async () => sseResponse(["data: [DONE]\n"]));
-    vi.stubGlobal("fetch", fetchMock);
+    const fetchMock = mockFetch(() => sseResponse(["data: [DONE]\n"]));
 
     await runStream(baseArgs());
 
@@ -87,7 +92,7 @@ describe("AI Tutor streaming auth", () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe(`${SUPABASE_URL}/functions/v1/ai-chat`);
 
-    const headers = new Headers((init as RequestInit).headers);
+    const headers = new Headers(init.headers);
     expect(headers.get("Authorization")).toBe(`Bearer ${USER_JWT}`);
     expect(headers.get("Authorization")).not.toBe(`Bearer ${PUBLISHABLE_KEY}`);
     expect(headers.get("apikey")).toBe(PUBLISHABLE_KEY);
@@ -95,13 +100,12 @@ describe("AI Tutor streaming auth", () => {
 
   it("still sends the selected subject, language and history", async () => {
     getSession.mockResolvedValue(signedInSession());
-    const fetchMock = vi.fn(async () => sseResponse(["data: [DONE]\n"]));
-    vi.stubGlobal("fetch", fetchMock);
+    const fetchMock = mockFetch(() => sseResponse(["data: [DONE]\n"]));
 
     const args = baseArgs();
     await runStream(args);
 
-    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
     expect(body.subject).toBe("Polity");
     expect(body.language).toBe("hi");
     expect(body.messages).toEqual(args.messages);
@@ -109,8 +113,7 @@ describe("AI Tutor streaming auth", () => {
 
   it("does not call the Edge Function when there is no session, and reports an auth error", async () => {
     getSession.mockResolvedValue(signedOutSession());
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
+    const fetchMock = mockFetch(() => sseResponse(["data: [DONE]\n"]));
 
     const args = baseArgs();
     await runStream(args);
@@ -125,15 +128,12 @@ describe("AI Tutor streaming auth", () => {
 
   it("streams SSE deltas to the UI and completes", async () => {
     getSession.mockResolvedValue(signedInSession());
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        sseResponse([
-          'data: {"choices":[{"delta":{"content":"Article"}}]}\n',
-          'data: {"choices":[{"delta":{"content":" 370"}}]}\n',
-          "data: [DONE]\n",
-        ])
-      )
+    mockFetch(() =>
+      sseResponse([
+        'data: {"choices":[{"delta":{"content":"Article"}}]}\n',
+        'data: {"choices":[{"delta":{"content":" 370"}}]}\n',
+        "data: [DONE]\n",
+      ])
     );
 
     const args = baseArgs();
@@ -150,7 +150,7 @@ describe("AI Tutor streaming auth", () => {
     [402, /payment/i],
   ])("maps a %i response to a clear error", async (status, expected) => {
     getSession.mockResolvedValue(signedInSession());
-    vi.stubGlobal("fetch", vi.fn(async () => errorResponse(status)));
+    mockFetch(() => errorResponse(status));
 
     const args = baseArgs();
     await runStream(args);
@@ -163,23 +163,20 @@ describe("AI Tutor streaming auth", () => {
   it("passes the caller's abort signal through and treats cancellation as non-fatal", async () => {
     const controller = new AbortController();
     getSession.mockResolvedValue(signedInSession());
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => {
-        throw Object.assign(new Error("The user aborted a request."), { name: "AbortError" });
-      })
-    );
+    const fetchMock = mockFetch(() => {
+      throw Object.assign(new Error("The user aborted a request."), { name: "AbortError" });
+    });
 
     const args = baseArgs({ signal: controller.signal });
     await runStream(args);
 
-    expect((fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1].signal).toBe(controller.signal);
+    expect(fetchMock.mock.calls[0][1].signal).toBe(controller.signal);
     expect(args.onError).not.toHaveBeenCalled();
   });
 
   it("never persists or logs the access token", async () => {
     getSession.mockResolvedValue(signedInSession());
-    vi.stubGlobal("fetch", vi.fn(async () => sseResponse(["data: [DONE]\n"])));
+    mockFetch(() => sseResponse(["data: [DONE]\n"]));
 
     await runStream(baseArgs());
 

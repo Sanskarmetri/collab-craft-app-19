@@ -114,21 +114,34 @@ serve(async (req) => {
   }
 
   try {
-    // Get user from auth header for rate limiting
+    // Require authentication for every non-OPTIONS request
+    const unauthorized = () =>
+      new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+
     const authHeader = req.headers.get("Authorization");
+    const match = authHeader?.match(/^Bearer\s+(\S+)$/);
+    if (!match) {
+      return unauthorized();
+    }
+    const token = match[1];
     let userId: string | null = null;
     
-    if (authHeader) {
+    {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
       const supabase = createClient(supabaseUrl, supabaseKey);
       
-      const token = authHeader.replace("Bearer ", "");
-      const { data: { user } } = await supabase.auth.getUser(token);
-      userId = user?.id || null;
+      const { data: userData, error: userError } = await supabase.auth.getUser(token);
+      if (userError || !userData?.user?.id) {
+        return unauthorized();
+      }
+      userId = userData.user.id;
       
-      if (userId) {
+      {
         // Check subscription status for rate limit
         const { data: profile } = await supabase
           .from('profiles')

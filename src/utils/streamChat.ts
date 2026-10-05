@@ -1,3 +1,5 @@
+import { supabase } from "@/integrations/supabase/client";
+
 type Message = { role: "user" | "assistant" | "system"; content: string };
 
 interface StreamChatOptions {
@@ -27,6 +29,16 @@ export async function streamChat({
     return;
   }
 
+  // The Edge Function reads the bearer token to identify the caller, so it must
+  // carry the signed-in user's access token — never the publishable/anon key.
+  const { data: { session } } = await supabase.auth.getSession();
+  const accessToken = session?.access_token;
+
+  if (!accessToken) {
+    onError(new Error('Please sign in to chat with the AI tutor.'));
+    return;
+  }
+
   const CHAT_URL = `${SUPABASE_URL}/functions/v1/ai-chat`;
 
   try {
@@ -34,7 +46,10 @@ export async function streamChat({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        // Public client identifier the gateway expects; the user's JWT above is
+        // what actually authorizes this request.
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${accessToken}`,
       },
       signal,
       body: JSON.stringify({ messages, subject, language }),

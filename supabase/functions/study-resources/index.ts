@@ -1,3 +1,5 @@
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -61,6 +63,23 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    const unauthorized = () => new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+    const authHeader = req.headers.get('Authorization');
+    const tokenMatch = authHeader?.match(/^Bearer\s+(\S+)$/);
+    if (!tokenMatch) return unauthorized();
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    if (!supabaseUrl || !supabaseAnonKey) throw new Error('Authentication service is not configured');
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: { user }, error: authError } = await supabase.auth.getUser(tokenMatch[1]);
+    if (authError || !user?.id) return unauthorized();
+
     const { type, subject, extra } = await req.json();
     if (!['pyq', 'ncert', 'improve'].includes(type)) {
       return new Response(JSON.stringify({ error: 'type must be pyq | ncert | improve' }), {

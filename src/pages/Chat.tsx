@@ -262,7 +262,7 @@ export default function Chat() {
           </ScrollArea>
         </Tabs>
 
-        <Card className="mb-4 flex h-[max(20rem,calc(100dvh-24rem))] flex-col overflow-hidden p-4">
+        <Card className="mb-4 flex h-[62dvh] min-h-[26rem] max-h-[70dvh] flex-col overflow-hidden p-4 md:h-[max(20rem,calc(100dvh-24rem))] md:min-h-0 md:max-h-none">
           <div
             ref={messageViewportRef}
             className="flex-1 overflow-y-auto pr-4"
@@ -278,13 +278,15 @@ export default function Chat() {
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-lg p-3 ${
+                    className={`${
+                      msg.role === 'user' ? 'max-w-[80%]' : 'w-[94%] max-w-3xl'
+                    } rounded-lg p-3 ${
                       msg.role === 'user'
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap">{msg.content}</div>
+                    <div className="whitespace-pre-wrap break-words text-base leading-relaxed">{msg.content}</div>
                   </div>
                 </div>
               ))}

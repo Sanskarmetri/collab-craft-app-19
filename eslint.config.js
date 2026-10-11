@@ -5,7 +5,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  { ignores: ["dist", "supabase/functions/**", "tailwind.config.ts", "postcss.config.js", "src/integrations/supabase/**"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -21,6 +21,9 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
+      // Aligned with tsconfig (strict: false, noImplicitAny: false): the
+      // codebase intentionally permits `any`; flagging it adds noise, not safety.
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
 );

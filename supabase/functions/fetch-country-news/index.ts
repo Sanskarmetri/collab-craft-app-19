@@ -30,6 +30,23 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    const unauthorized = () => new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+    const authHeader = req.headers.get('Authorization');
+    const tokenMatch = authHeader?.match(/^Bearer\s+(\S+)$/);
+    if (!tokenMatch) return unauthorized();
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    if (!supabaseUrl || !supabaseAnonKey) throw new Error('Authentication service is not configured');
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: { user }, error: authError } = await supabase.auth.getUser(tokenMatch[1]);
+    if (authError || !user?.id) return unauthorized();
+
     const { country, countryCode } = await req.json();
     if (!country || typeof country !== 'string' || country.length > 100) {
       return new Response(JSON.stringify({ error: 'valid country required' }), {
@@ -85,8 +102,7 @@ Deno.serve(async (req) => {
     }
 
     // 3) Rate limit before hitting the AI gateway
-    const caller = req.headers.get('authorization')?.slice(-24) || req.headers.get('x-forwarded-for') || 'anon';
-    if (rateLimited(caller)) {
+    if (rateLimited(user.id)) {
       return new Response(JSON.stringify({ error: 'Too many requests. Please wait a moment and try again.' }), {
         status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

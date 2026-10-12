@@ -1,3 +1,5 @@
+import { createClient } from 'npm:@supabase/supabase-js@2';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -9,6 +11,24 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const unauthorized = () => new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
+    const authHeader = req.headers.get('Authorization');
+    const tokenMatch = authHeader?.match(/^Bearer\s+(\S+)$/);
+    if (!tokenMatch) return unauthorized();
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    if (!supabaseUrl || !supabaseAnonKey) throw new Error('Authentication service is not configured');
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: { user }, error: authError } = await supabase.auth.getUser(tokenMatch[1]);
+    if (authError || !user?.id) return unauthorized();
+
     const { newspaper } = await req.json();
 
     if (!newspaper || !['the_hindu', 'indian_express'].includes(newspaper)) {
@@ -108,7 +128,7 @@ Return ONLY a valid JSON array with this structure:
   } catch (error) {
     console.error('Error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Failed to fetch news' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

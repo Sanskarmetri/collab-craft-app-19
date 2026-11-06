@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { validateImageDataUrl } from "./image.ts";
 
 // Input validation schema
 interface ChatMessage {
@@ -10,6 +11,7 @@ interface ChatRequest {
   messages: ChatMessage[];
   subject: string;
   language: string;
+  imageDataUrl?: string;
 }
 
 const VALID_SUBJECTS = [
@@ -32,7 +34,15 @@ function validateChatRequest(data: any): { valid: boolean; error?: string; data?
     return { valid: false, error: 'Invalid request body' };
   }
 
-  const { messages, subject, language } = data;
+  const { messages, subject, language, imageDataUrl } = data;
+
+  if (imageDataUrl !== undefined) {
+    const imageError = validateImageDataUrl(imageDataUrl);
+    if (imageError) return { valid: false, error: imageError };
+    if (!Array.isArray(messages) || messages.at(-1)?.role !== 'user') {
+      return { valid: false, error: 'An image must be attached to the latest user message' };
+    }
+  }
 
   // Validate messages array
   if (!Array.isArray(messages)) {
@@ -82,7 +92,7 @@ function validateChatRequest(data: any): { valid: boolean; error?: string; data?
 
   return { 
     valid: true, 
-    data: { messages, subject, language } as ChatRequest 
+    data: { messages, subject, language, ...(imageDataUrl ? { imageDataUrl } : {}) } as ChatRequest 
   };
 }
 
@@ -195,7 +205,7 @@ serve(async (req) => {
       );
     }
 
-    const { messages, subject, language } = validation.data!;
+    const { messages, subject, language, imageDataUrl } = validation.data!;
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -204,7 +214,10 @@ serve(async (req) => {
     }
 
     // Get subject-specific system prompt
-    const systemPrompt = SUBJECT_PROMPTS[subject] || SUBJECT_PROMPTS["Current Affairs"];
+    const systemPrompt = (SUBJECT_PROMPTS[subject] || SUBJECT_PROMPTS["Current Affairs"]) +
+      (imageDataUrl
+        ? " The user has shared an image for Scan & Learn. Explain only what is relevant to UPSC or State PSC preparation. If the image is unrelated to these exams, politely say so and do not analyze unrelated personal or entertainment content."
+        : "");
     
     // Add language instruction if Hindi is selected
     const languageInstruction = language === "hi" 
@@ -223,7 +236,16 @@ serve(async (req) => {
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt + languageInstruction },
-          ...messages,
+          ...messages.map((message, index) => {
+            if (!imageDataUrl || index !== messages.length - 1) return message;
+            return {
+              ...message,
+              content: [
+                { type: "text", text: message.content },
+                { type: "image_url", image_url: { url: imageDataUrl } },
+              ],
+            };
+          }),
         ],
         stream: true,
         temperature: 0.7,

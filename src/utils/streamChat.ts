@@ -6,6 +6,7 @@ interface StreamChatOptions {
   messages: Message[];
   subject: string;
   language: string;
+  imageDataUrl?: string;
   signal?: AbortSignal;
   onDelta: (deltaText: string) => void;
   onDone: () => void;
@@ -16,6 +17,7 @@ export async function streamChat({
   messages,
   subject,
   language,
+  imageDataUrl,
   signal,
   onDelta,
   onDone,
@@ -52,7 +54,12 @@ export async function streamChat({
         Authorization: `Bearer ${accessToken}`,
       },
       signal,
-      body: JSON.stringify({ messages, subject, language }),
+      body: JSON.stringify({
+        messages,
+        subject,
+        language,
+        ...(imageDataUrl ? { imageDataUrl } : {}),
+      }),
     });
 
 

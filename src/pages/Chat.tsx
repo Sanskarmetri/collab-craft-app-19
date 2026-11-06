@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Send, Globe, Loader2, Trash2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Send, Globe, Loader2, Trash2, AlertCircle, RefreshCw, Camera, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/components/ui/use-toast';
 import { streamChat } from '@/utils/streamChat';
+import { getScanImageError, readScanImage } from '@/utils/scanImage';
 
 const subjects = [
   'Current Affairs',
@@ -93,10 +94,13 @@ export default function Chat() {
   const [language, setLanguage] = useState<'en' | 'hi'>(stored.language);
   const [isLoading, setIsLoading] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
+  const [scanFile, setScanFile] = useState<File | null>(null);
   const messageViewportRef = useRef<HTMLDivElement>(null);
+  const scanInputRef = useRef<HTMLInputElement>(null);
   const shouldFollowRef = useRef(true);
   const abortRef = useRef<AbortController | null>(null);
   const lastPromptRef = useRef<string | null>(null);
+  const lastImageFileRef = useRef<File | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -142,7 +146,7 @@ export default function Chat() {
   };
 
 
-  const runStream = async (history: Message[], prompt: string) => {
+  const runStream = async (history: Message[], prompt: string, imageDataUrl?: string) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -159,6 +163,7 @@ export default function Chat() {
         messages: history,
         subject: selectedSubject,
         language,
+        imageDataUrl,
         signal: controller.signal,
         onDelta: (chunk) => {
           if (isStale()) return;
@@ -208,13 +213,31 @@ export default function Chat() {
   };
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && !scanFile) || isLoading) return;
 
-    const userMessage: Message = { role: 'user', content: input };
+    const file = scanFile;
+    let imageDataUrl: string | undefined;
+    if (file) {
+      try {
+        imageDataUrl = await readScanImage(file);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Could not read this image.';
+        setStreamError(message);
+        toast({ title: 'Image could not be read', description: message, variant: 'destructive' });
+        return;
+      }
+    }
+
+    const prompt = input.trim() || 'Explain this image and identify only the parts relevant to UPSC preparation.';
+    lastImageFileRef.current = file;
+    setScanFile(null);
+    if (scanInputRef.current) scanInputRef.current.value = '';
+
+    const userMessage: Message = { role: 'user', content: prompt };
     const history = [...messages, userMessage];
     setMessages(history);
     setInput('');
-    await runStream(history, userMessage.content);
+    await runStream(history, userMessage.content, imageDataUrl);
   };
 
   const handleRetry = async () => {
@@ -222,7 +245,29 @@ export default function Chat() {
     const history = messages.filter(
       (m, i) => !(i === messages.length - 1 && m.role === 'assistant' && !m.content.trim())
     );
-    await runStream(history, lastPromptRef.current ?? '');
+    let imageDataUrl: string | undefined;
+    if (lastImageFileRef.current) {
+      try {
+        imageDataUrl = await readScanImage(lastImageFileRef.current);
+      } catch {
+        setStreamError('Could not read this image. Please select it again.');
+        return;
+      }
+    }
+    await runStream(history, lastPromptRef.current ?? '', imageDataUrl);
+  };
+
+  const handleScanFile = (file: File | undefined) => {
+    if (!file) return;
+    const error = getScanImageError(file);
+    if (error) {
+      setStreamError(error);
+      toast({ title: 'Image not supported', description: error, variant: 'destructive' });
+      if (scanInputRef.current) scanInputRef.current.value = '';
+      return;
+    }
+    setStreamError(null);
+    setScanFile(file);
   };
 
 
@@ -328,7 +373,48 @@ export default function Chat() {
           ))}
         </div>
 
+        {scanFile && (
+          <div className="mb-2 flex items-center gap-2 rounded-md border border-border bg-muted px-3 py-2 text-sm">
+            <Camera className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate">{scanFile.name}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              aria-label="Remove selected image"
+              title="Remove selected image"
+              onClick={() => {
+                setScanFile(null);
+                if (scanInputRef.current) scanInputRef.current.value = '';
+              }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
         <div className="flex gap-2">
+          <input
+            ref={scanInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            capture="environment"
+            className="sr-only"
+            aria-label="Choose a photo to scan for UPSC learning"
+            onChange={(event) => handleScanFile(event.currentTarget.files?.[0])}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Scan a photo"
+            title="Scan a photo"
+            disabled={isLoading}
+            onClick={() => scanInputRef.current?.click()}
+          >
+            <Camera className="h-4 w-4" />
+          </Button>
           <Input
             placeholder={`Ask about ${selectedSubject}...`}
             value={input}
@@ -336,7 +422,7 @@ export default function Chat() {
             onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleSend()}
             disabled={isLoading}
           />
-          <Button onClick={handleSend} disabled={isLoading}>
+          <Button onClick={handleSend} disabled={isLoading || (!input.trim() && !scanFile)}>
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (

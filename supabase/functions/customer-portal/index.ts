@@ -7,6 +7,34 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const APP_RETURN_ORIGIN = "https://collab-craft-app-19.lovable.app";
+const TRUSTED_RETURN_ORIGINS = new Set([
+  APP_RETURN_ORIGIN,
+  "https://id-preview--60740f4f-0f2e-451e-a6f4-51a143c53bf1.lovable.app",
+]);
+
+function getSafeReturnOrigin(requestOrigin: string | null): string {
+  if (!requestOrigin) return APP_RETURN_ORIGIN;
+
+  try {
+    const parsed = new URL(requestOrigin);
+    if (parsed.origin === requestOrigin && TRUSTED_RETURN_ORIGINS.has(parsed.origin)) {
+      return parsed.origin;
+    }
+    if (
+      parsed.origin === requestOrigin &&
+      parsed.protocol === "http:" &&
+      (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1")
+    ) {
+      return parsed.origin;
+    }
+  } catch {
+    // Ignore malformed caller-controlled origins and use the canonical app URL.
+  }
+
+  return APP_RETURN_ORIGIN;
+}
+
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[CUSTOMER-PORTAL] ${step}${detailsStr}`);
@@ -39,7 +67,7 @@ serve(async (req) => {
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
     
-    logStep("User authenticated", { userId: user.id, email: user.email });
+    logStep("User authenticated", { userId: user.id });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
@@ -51,7 +79,7 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
-    const origin = req.headers.get("origin") || "http://localhost:5173";
+    const origin = getSafeReturnOrigin(req.headers.get("origin"));
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: `${origin}/subscription`,
@@ -65,7 +93,7 @@ serve(async (req) => {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR", { message: errorMessage });
+    logStep("ERROR");
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,

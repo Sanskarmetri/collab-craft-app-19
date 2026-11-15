@@ -21,6 +21,10 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_ANON_KEY") ?? ""
   );
+  const adminClient = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+  );
 
   try {
     logStep("Function started");
@@ -39,7 +43,7 @@ serve(async (req) => {
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
     
-    logStep("User authenticated", { userId: user.id, email: user.email });
+    logStep("User authenticated", { userId: user.id });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
@@ -48,7 +52,7 @@ serve(async (req) => {
       logStep("No customer found");
       
       // Update profiles table subscription status
-      await supabaseClient
+      await adminClient
         .from('profiles')
         .update({ subscription_status: 'free' })
         .eq('id', user.id);
@@ -82,7 +86,7 @@ serve(async (req) => {
       logStep("Active subscription found", { subscriptionId: subscription.id, productId });
       
       // Update profiles table subscription status
-      await supabaseClient
+      await adminClient
         .from('profiles')
         .update({ subscription_status: 'premium' })
         .eq('id', user.id);
@@ -90,7 +94,7 @@ serve(async (req) => {
       logStep("No active subscription found");
       
       // Update profiles table subscription status
-      await supabaseClient
+      await adminClient
         .from('profiles')
         .update({ subscription_status: 'free' })
         .eq('id', user.id);
@@ -107,7 +111,7 @@ serve(async (req) => {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR", { message: errorMessage });
+    logStep("ERROR");
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,

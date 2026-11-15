@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1794758328732,
+      "tag": "0000_protect_profile_entitlements_and_quiz_answers",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794758463135,
+      "tag": "0001_restrict_country_news_cache_table_access",
+      "breakpoints": true
+    }
+  ]
+}

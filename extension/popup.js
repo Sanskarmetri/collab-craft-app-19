@@ -24,7 +24,12 @@ document.addEventListener('DOMContentLoaded', () => {
       'tiktok.com',
     ];
 
-    blockedSitesList.innerHTML = sites.map(site => `<li>🚫 ${site}</li>`).join('');
+    blockedSitesList.replaceChildren();
+    sites.forEach((site) => {
+      const item = document.createElement('li');
+      item.textContent = `🚫 ${String(site)}`;
+      blockedSitesList.appendChild(item);
+    });
   });
 
   // Open study app

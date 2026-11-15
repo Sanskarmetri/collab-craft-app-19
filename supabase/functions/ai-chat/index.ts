@@ -3,7 +3,7 @@ import { validateImageDataUrl } from "./image.ts";
 
 // Input validation schema
 interface ChatMessage {
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant';
   content: string;
 }
 
@@ -63,7 +63,7 @@ function validateChatRequest(data: any): { valid: boolean; error?: string; data?
       return { valid: false, error: 'Invalid message format' };
     }
 
-    if (!['user', 'assistant', 'system'].includes(msg.role)) {
+    if (!['user', 'assistant'].includes(msg.role)) {
       return { valid: false, error: 'Invalid message role' };
     }
 

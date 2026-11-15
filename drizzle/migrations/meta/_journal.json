@@ -15,6 +15,13 @@
       "when": 1794758463135,
       "tag": "0001_restrict_country_news_cache_table_access",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794761987595,
+      "tag": "0002_secure_study_reward_sources",
+      "breakpoints": true
     }
   ]
 }

@@ -17,8 +17,15 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const authHeader = req.headers.get('Authorization')!;
-    const token = authHeader.replace('Bearer ', '');
+    const authHeader = req.headers.get('Authorization');
+    const bearerMatch = authHeader?.match(/^Bearer\s+([^\s]+)$/i);
+    if (!bearerMatch) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const token = bearerMatch[1];
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
@@ -41,12 +48,14 @@ serve(async (req) => {
     const { count: sessionsCount } = await supabase
       .from('sessions')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .not('end_ts', 'is', null);
 
     const { count: quizzesCount } = await supabase
-      .from('quizzes')
+      .from('quiz_attempts')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .eq('status', 'completed');
 
     const { data: analyticsData } = await supabase
       .from('analytics')
@@ -66,7 +75,8 @@ serve(async (req) => {
     const { data: morningSessionsData } = await supabase
       .from('sessions')
       .select('start_ts')
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .not('end_ts', 'is', null);
 
     const morningSessions = morningSessionsData?.filter(s => {
       const hour = new Date(s.start_ts).getHours();
@@ -74,9 +84,10 @@ serve(async (req) => {
     }).length || 0;
 
     const { data: highestQuiz } = await supabase
-      .from('quizzes')
+      .from('quiz_attempts')
       .select('score')
       .eq('user_id', user.id)
+      .eq('status', 'completed')
       .order('score', { ascending: false })
       .limit(1)
       .single();

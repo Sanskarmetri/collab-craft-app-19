@@ -130,8 +130,8 @@ export function useFocusSession() {
           user_id: user.id,
           subject: data.subject as any,
           topic: data.topic,
-          start_ts: new Date().toISOString(),
           notes: data.notes,
+          planned_duration: duration,
         }])
         .select()
         .single();
@@ -227,43 +227,10 @@ export function useFocusSession() {
     
     if (sessionId) {
       try {
-        await supabase
-          .from('sessions')
-          .update({
-            end_ts: new Date().toISOString(),
-            focus_time: Math.floor(focusTime / 60),
-          })
-          .eq('id', sessionId);
-
-        // Update daily analytics
-        const today = new Date().toISOString().split('T')[0];
-        const { data: analytics } = await supabase
-          .from('analytics')
-          .select('*')
-          .eq('date', today)
-            .eq('user_id', user.id)
-          .single();
-
-        if (analytics) {
-          await supabase
-            .from('analytics')
-            .update({
-              sessions_completed: (analytics.sessions_completed || 0) + 1,
-              total_focus_minutes: (analytics.total_focus_minutes || 0) + Math.floor(focusTime / 60),
-            })
-              .eq('date', today)
-              .eq('user_id', user.id);
-        } else {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await supabase.from('analytics').insert({
-              user_id: user.id,
-              date: today,
-              sessions_completed: 1,
-              total_focus_minutes: Math.floor(focusTime / 60),
-            });
-          }
-        }
+        const { error } = await supabase.functions.invoke('complete-focus-session', {
+          body: { sessionId },
+        });
+        if (error) throw error;
 
         window.postMessage({ type: 'FOCUS_END' }, '*');
 
@@ -276,6 +243,14 @@ export function useFocusSession() {
         checkAchievements('session_complete');
       } catch (error) {
         console.error('Failed to complete session:', error);
+        statusRef.current = 'paused';
+        setStatus('paused');
+        toast({
+          title: 'Session could not be verified',
+          description: 'Resume the timer to retry completing this session.',
+          variant: 'destructive',
+        });
+        return;
       }
     }
 

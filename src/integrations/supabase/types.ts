@@ -498,6 +498,7 @@ export type Database = {
           focus_time: number | null
           id: string
           notes: string | null
+          planned_duration: number
           start_ts: string
           subject: Database["public"]["Enums"]["subject_type"]
           topic: string
@@ -511,6 +512,7 @@ export type Database = {
           focus_time?: number | null
           id?: string
           notes?: string | null
+          planned_duration?: number
           start_ts?: string
           subject: Database["public"]["Enums"]["subject_type"]
           topic: string
@@ -524,6 +526,7 @@ export type Database = {
           focus_time?: number | null
           id?: string
           notes?: string | null
+          planned_duration?: number
           start_ts?: string
           subject?: Database["public"]["Enums"]["subject_type"]
           topic?: string
@@ -705,7 +708,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      complete_focus_session: {
+        Args: { _session_id: string; _user_id: string }
+        Returns: number
+      }
     }
     Enums: {
       exam_type: "upsc" | "state_psc"

@@ -22,6 +22,13 @@
       "when": 1794761987595,
       "tag": "0002_secure_study_reward_sources",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794807755950,
+      "tag": "0003_complete_focus_progress_server_side",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,3 @@
+- [ ] Configure the Capacitor Android app with a preview-only live-reload option and a bundled-assets release mode.
+- [ ] Prepare Play Store listing copy and a release checklist using publisher name “Studybyself.”
+- [ ] Validate the setup that this environment supports and list remaining local/store requirements.
